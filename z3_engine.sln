@@ -1,0 +1,43 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "z3_engine", "z3_engine\z3_engine.vcxproj", "{8551ABC0-3C8A-4785-9F03-4E6264EB88D4}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "z3_utilib", "z3_utilib\z3_utilib.vcxproj", "{3F458BC4-7CFB-4913-BD8D-638CF6E1176A}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "z3_rtsp_client", "z3_rtsp_client\z3_rtsp_client.vcxproj", "{1D63656D-4472-4554-8B66-CD910DC23831}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "z3_rtsp_client_test", "z3_rtsp_client_test\z3_rtsp_client_test.vcxproj", "{2ECC782F-11A8-4710-96E1-19A2CD1B3044}"
+	ProjectSection(ProjectDependencies) = postProject
+		{1D63656D-4472-4554-8B66-CD910DC23831} = {1D63656D-4472-4554-8B66-CD910DC23831}
+		{8551ABC0-3C8A-4785-9F03-4E6264EB88D4} = {8551ABC0-3C8A-4785-9F03-4E6264EB88D4}
+		{3F458BC4-7CFB-4913-BD8D-638CF6E1176A} = {3F458BC4-7CFB-4913-BD8D-638CF6E1176A}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8551ABC0-3C8A-4785-9F03-4E6264EB88D4}.Debug|Win32.ActiveCfg = Debug|Win32
+		{8551ABC0-3C8A-4785-9F03-4E6264EB88D4}.Debug|Win32.Build.0 = Debug|Win32
+		{8551ABC0-3C8A-4785-9F03-4E6264EB88D4}.Release|Win32.ActiveCfg = Release|Win32
+		{8551ABC0-3C8A-4785-9F03-4E6264EB88D4}.Release|Win32.Build.0 = Release|Win32
+		{3F458BC4-7CFB-4913-BD8D-638CF6E1176A}.Debug|Win32.ActiveCfg = Debug|Win32
+		{3F458BC4-7CFB-4913-BD8D-638CF6E1176A}.Debug|Win32.Build.0 = Debug|Win32
+		{3F458BC4-7CFB-4913-BD8D-638CF6E1176A}.Release|Win32.ActiveCfg = Release|Win32
+		{3F458BC4-7CFB-4913-BD8D-638CF6E1176A}.Release|Win32.Build.0 = Release|Win32
+		{1D63656D-4472-4554-8B66-CD910DC23831}.Debug|Win32.ActiveCfg = Debug|Win32
+		{1D63656D-4472-4554-8B66-CD910DC23831}.Debug|Win32.Build.0 = Debug|Win32
+		{1D63656D-4472-4554-8B66-CD910DC23831}.Release|Win32.ActiveCfg = Release|Win32
+		{1D63656D-4472-4554-8B66-CD910DC23831}.Release|Win32.Build.0 = Release|Win32
+		{2ECC782F-11A8-4710-96E1-19A2CD1B3044}.Debug|Win32.ActiveCfg = Debug|Win32
+		{2ECC782F-11A8-4710-96E1-19A2CD1B3044}.Debug|Win32.Build.0 = Debug|Win32
+		{2ECC782F-11A8-4710-96E1-19A2CD1B3044}.Release|Win32.ActiveCfg = Release|Win32
+		{2ECC782F-11A8-4710-96E1-19A2CD1B3044}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
