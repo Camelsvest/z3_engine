@@ -38,9 +38,6 @@ namespace Z3 {
                 char            *m_pUdpRecvBuf;
                 uint32_t        m_nUdpRecvBufSize;
                 WSABUF          m_wsaRecvBuf;
-
-                SOCKADDR_IN     m_addrRemote;
-                int             m_nRemoteAddrSize;
         };
 };
 

@@ -46,11 +46,11 @@ LPZ3OVL IOCPObj::AllocZ3Ovl(HANDLE hFileHandle, ev_id_t evID, uint32_t millsecon
         if (!pOvl)
                 return NULL;
         
-        pOvl->file_handle = hFileHandle;
-        pOvl->act_ovl.ev_id = evID;
+        pOvl->file_handle       = hFileHandle;
+        pOvl->act_ovl.ev_id     = evID;
         pOvl->timeout_ovl.ev_id = EV_TIMEOUT;
-
-        pOvl->data = this;
+        pOvl->remote_addr_size  = sizeof(pOvl->remote_addr);
+        pOvl->data              = this;
 
         if (millseconds == INFINITE)
         {

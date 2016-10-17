@@ -81,6 +81,8 @@
     <ClInclude Include="z3_h264_frame.hpp" />
     <ClInclude Include="z3_media_frame.hpp" />
     <ClInclude Include="z3_media_ports.hpp" />
+    <ClInclude Include="z3_rtcp.hpp" />
+    <ClInclude Include="z3_rtcp_msg.hpp" />
     <ClInclude Include="z3_rtp.hpp" />
     <ClInclude Include="z3_rtp_msg.hpp" />
     <ClInclude Include="z3_rtp_udp_session.hpp" />
@@ -98,6 +100,7 @@
     <ClCompile Include="z3_h264_frame.cpp" />
     <ClCompile Include="z3_media_frame.cpp" />
     <ClCompile Include="z3_media_ports.cpp" />
+    <ClCompile Include="z3_rtcp_msg.cpp" />
     <ClCompile Include="z3_rtp_msg.cpp" />
     <ClCompile Include="z3_rtp_udp_session.cpp" />
     <ClCompile Include="z3_rtsp_client.cpp" />

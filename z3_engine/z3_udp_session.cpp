@@ -94,10 +94,8 @@ int UDPSession::StartRead(uint32_t nTimeout /*Millseconds*/)
         }
 
         dwFlags = 0;
-        m_nRemoteAddrSize = sizeof(m_addrRemote);
-
-        nError = ::WSARecvFrom(m_hSocket, &m_wsaRecvBuf, 1, &dwRecvBytes, &dwFlags, 
-                (SOCKADDR *)&m_addrRemote, &m_nRemoteAddrSize,  ACT_OVL_ADDR(pZ3Ovl), NULL);
+        nError = ::WSARecvFrom(m_hSocket, &m_wsaRecvBuf, 1, &dwRecvBytes, &dwFlags, (SOCKADDR *)&SOCK_ADDR_FROM_Z3OVL(pZ3Ovl),
+                &SOCK_ADDR_SIZE_FROM_Z3OVL(pZ3Ovl),  ACT_OVL_ADDR(pZ3Ovl), NULL);
         if  (nError == SOCKET_ERROR)
         {
                 nError = ::WSAGetLastError();
