@@ -1,22 +1,36 @@
 #include "z3_common.hpp"
 #include "z3_rtcp_msg.hpp"
+#include "z3_rtsp_ids.hpp"
+#include "z3_rtsp_def.hpp"
 
 using namespace Z3;
 
 RTCPPacket::RTCPPacket()
-        : m_pPacket(NULL)
+        : Msg(RTCP_MSG_ID)
+        , m_pPacket(NULL)
         , m_nPacketSize(0)
 {
 }
 
 RTCPPacket::~RTCPPacket()
 {
+        Z3_FREE_POINTER(m_pPacket);
+}
+
+unsigned int RTCPPacket::ProtoID()
+{
+        return RTCP_PROTO_ID;
 }
 
 void RTCPPacket::InitPacket(char *pBuf, size_t nBufSize)
 {
-        m_pPacket = pBuf;
-        m_nPacketSize = nBufSize;
+        Z3_FREE_POINTER(m_pPacket);
+        m_pPacket = (char *)z3_malloc(nBufSize);
+        if (m_pPacket)
+        {
+                m_nPacketSize = nBufSize;
+                memcpy(m_pPacket, pBuf, nBufSize);
+        }
 }
 
 unsigned char RTCPPacket::GetPayloadType()

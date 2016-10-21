@@ -5,27 +5,16 @@ using namespace Z3;
 
 Msg::Msg(uint32_t nObjID)
         : AsyncObj(nObjID)
-        , m_pBuffer(NULL)
-        , m_nBufSize(0)
 {
 }
 
 Msg::~Msg()
 {
-        Z3_FREE_POINTER(m_pBuffer);
 }
 
-char * Msg::ToString(unsigned int *pnSize)
+bool Msg::ToString(char **ppbuf, unsigned int *pnSize)
 {
-        assert(m_pBuffer == NULL);
+        TRACE_ERROR("You should override %s in derived class if you want to convert msg to a string.\r\n", __FUNCTION__);
 
-        if (ToStringImpl(&m_pBuffer, &m_nBufSize))
-        {
-                *pnSize = m_nBufSize;
-                return m_pBuffer;
-        }
-        
-        *pnSize = 0;
-
-        return NULL;                
+        return false;
 }

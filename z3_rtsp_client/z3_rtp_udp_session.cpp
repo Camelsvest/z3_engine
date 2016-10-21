@@ -3,6 +3,7 @@
 #include "z3_rtsp_def.hpp"
 #include "z3_rtsp_error.hpp"
 #include "z3_rtsp_ids.hpp"
+#include "z3_rtcp_msg.hpp"
 
 using namespace Z3;
 
@@ -178,6 +179,19 @@ RTCPUDPParser::~RTCPUDPParser()
 
 int RTCPUDPParser::Parse(const char *pBuf, uint32_t nLen, void *pData, Msg **pMsg)
 {
+        RTCPPacket      *pPacket;
+        uint16_t        nLength;
+
+        nLength = RTCP_PKT_LENGTH(pBuf);
+
+        while (nLength < nLen)
+        {
+                pPacket = new RTCPPacket;
+                pPacket->InitPacket((char *)pBuf, nLength);
+
+                *pMsg = pPacket;
+        }
+
         return 0;
 }
 

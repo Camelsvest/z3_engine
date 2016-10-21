@@ -8,8 +8,9 @@ enum _Z3_RTSP_OBJ_ID
         RTSP_SESSION_ID,
         RTSP_PROTO_PARSER_ID,
         RTP_MSG_ID,
+        RTCP_MSG_ID,
         RTP_UDP_SESSION_ID,
-        RTCP_UDP_SESSION_ID
+        RTCP_UDP_SESSION_ID,
 };
 
 #endif

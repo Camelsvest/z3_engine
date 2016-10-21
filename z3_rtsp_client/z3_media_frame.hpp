@@ -29,8 +29,6 @@ namespace Z3 {
 
         protected:
                 virtual ~MediaFrame();
-
-                virtual bool            ToStringImpl(char **ppbuf, unsigned int *pnSize);
         };
 
 

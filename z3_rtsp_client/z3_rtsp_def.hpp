@@ -14,6 +14,7 @@ namespace Z3 {
                 UNKNOWN_PROTO = 0,
                 RTSP_PROTO_ID,
                 RTP_PROTO_ID,
+                RTCP_PROTO_ID,
                 MEDIA_FRAME_ID
         };
 

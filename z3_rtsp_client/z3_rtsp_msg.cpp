@@ -174,17 +174,17 @@ RtspKeyValueArray& RtspKeyValueArray::operator= (RtspKeyValueArray &Array)
         return *this;
 }
 
-RtspMsgType::RtspMsgType(RTSP_MSG_TYPE msgType)
+RtspMsgObj::RtspMsgObj(RTSP_MSG_TYPE msgType)
         : m_msgType(msgType)
 {
 }
 
-RtspMsgType::~RtspMsgType()
+RtspMsgObj::~RtspMsgObj()
 {
 }
 
 RtspRequest::RtspRequest()
-        : RtspMsgType(RTSP_MSG_REQUEST)
+        : RtspMsgObj(RTSP_MSG_REQUEST)
         , m_method(RTSP_INVALID)
         , m_pURI(NULL)
         , m_nUriLen(0)
@@ -222,7 +222,7 @@ int RtspRequest::Init(RTSP_METHOD method, const char *pUri, unsigned int nUriLen
 }
 
 RtspResponse::RtspResponse()
-        : RtspMsgType(RTSP_MSG_RESPONSE)
+        : RtspMsgObj(RTSP_MSG_RESPONSE)
         , m_code(RTSP_STS_INVALID)
         , m_pReason(NULL)
         , m_nReasonLen(0)
@@ -263,7 +263,7 @@ int RtspResponse::Init(RtspMsg *pRequest, RTSP_STATUS_CODE code, const char *pRe
 }
 
 RtspData::RtspData()
-        : RtspMsgType(RTSP_MSG_DATA)
+        : RtspMsgObj(RTSP_MSG_DATA)
         , m_szChannel(0xFF)
 {
 }
@@ -280,7 +280,7 @@ int RtspData::Init(char channel)
 }
 
 RtspMsg::RtspMsg()
-        : m_pMsgType(NULL)
+        : m_pMsgObj(NULL)
         , m_pHdrFields(NULL)
         , m_pBody(NULL)
         , m_nBodySize(0)
@@ -289,7 +289,7 @@ RtspMsg::RtspMsg()
 
 RtspMsg::~RtspMsg()
 {
-        Z3_DELETE_OBJ(m_pMsgType);
+        Z3_DELETE_OBJ(m_pMsgObj);
         Z3_DELETE_OBJ(m_pHdrFields);
 
         Z3_FREE_POINTER(m_pBody);
@@ -302,7 +302,7 @@ unsigned int RtspMsg::ProtoID()
 
 int RtspMsg::Unset()
 {
-        Z3_DELETE_OBJ(m_pMsgType);
+        Z3_DELETE_OBJ(m_pMsgObj);
         Z3_DELETE_OBJ(m_pHdrFields);
 
         Z3_FREE_POINTER(m_pBody);
@@ -318,14 +318,14 @@ int RtspMsg::InitRequest(RTSP_METHOD method, const char *pUri, unsigned int nUri
 
         Unset();
 
-        assert(m_pMsgType == NULL);
+        assert(m_pMsgObj == NULL);
         pRequest = new RtspRequest;
         if (pRequest)
         {                
                 result = pRequest->Init(method, pUri, nUriLength);
                 if (result == Z3_EOK)
                 {
-                        m_pMsgType = pRequest;
+                        m_pMsgObj = pRequest;
                 }
                 else
                 {
@@ -346,14 +346,14 @@ int RtspMsg::InitResponse(RtspMsg *pRequest, RTSP_STATUS_CODE code, const char *
 
         Unset();
 
-        assert(m_pMsgType == NULL);
+        assert(m_pMsgObj == NULL);
         pResponse = new RtspResponse;
         if (pResponse)
         {
                 result = pResponse->Init(pRequest, code, pReason);
                 if (0 == result)
                 {
-                        m_pMsgType = pResponse;
+                        m_pMsgObj = pResponse;
                         if (pRequest)
                         {
                                 if (Z3_EOK == pRequest->GetHeader(RTSP_HDR_CSEQ, &pHeader, 0))
@@ -390,14 +390,14 @@ RTSP_VERSION RtspMsg::GetVersion()
 {
         RTSP_VERSION version = RTSP_VERSION_INVALID;
 
-        if (m_pMsgType == NULL)
+        if (m_pMsgObj == NULL)
                 return RTSP_VERSION_INVALID;
 
-        switch (m_pMsgType->GetMsgType())
+        switch (m_pMsgObj->GetMsgType())
         {
         case RTSP_MSG_REQUEST:
                 RtspRequest *pRequest;
-                pRequest = dynamic_cast<RtspRequest *>(m_pMsgType);
+                pRequest = dynamic_cast<RtspRequest *>(m_pMsgObj);
                 version = pRequest->GetVersion();
                 break;
 
@@ -413,15 +413,15 @@ int RtspMsg::SetVersion(RTSP_VERSION version)
 {
         int result = Z3_ERROR;
 
-        if (m_pMsgType == NULL)
+        if (m_pMsgObj == NULL)
                 return Z3_ERROR;
 
-        switch (m_pMsgType->GetMsgType())
+        switch (m_pMsgObj->GetMsgType())
         {
         case RTSP_MSG_REQUEST:
                 RtspRequest *pRequest;
 
-                pRequest = dynamic_cast<RtspRequest *>(m_pMsgType);
+                pRequest = dynamic_cast<RtspRequest *>(m_pMsgObj);
                 pRequest->SetVersion(version);
                 result = Z3_EOK;
                 break;
@@ -438,14 +438,14 @@ RTSP_METHOD RtspMsg::GetMethod()
 {
         RTSP_METHOD method = RTSP_INVALID;
 
-        if (m_pMsgType == NULL)
+        if (m_pMsgObj == NULL)
                 return RTSP_INVALID;
 
-        switch (m_pMsgType->GetMsgType())
+        switch (m_pMsgObj->GetMsgType())
         {
         case RTSP_MSG_REQUEST:
                 RtspRequest *pRequest;
-                pRequest = dynamic_cast<RtspRequest *>(m_pMsgType);
+                pRequest = dynamic_cast<RtspRequest *>(m_pMsgObj);
                 method = pRequest->GetMethod();
                 break;
         case RTSP_MSG_RESPONSE:
@@ -460,15 +460,15 @@ int RtspMsg::SetMethod(RTSP_METHOD method)
 {
         int result = Z3_ERROR;
 
-        if (m_pMsgType == NULL)
+        if (m_pMsgObj == NULL)
                 return Z3_ERROR;
 
-        switch (m_pMsgType->GetMsgType())
+        switch (m_pMsgObj->GetMsgType())
         {
         case RTSP_MSG_REQUEST:
                 RtspRequest *pRequest;
 
-                pRequest = dynamic_cast<RtspRequest *>(m_pMsgType);
+                pRequest = dynamic_cast<RtspRequest *>(m_pMsgObj);
                 pRequest->SetMethod(method);
                 result = Z3_EOK;
                 break;
@@ -585,7 +585,7 @@ int RtspMsg::InitData(unsigned char channel, unsigned int nBodySize)
         Unset();
 
         result = Z3_ERROR;
-        assert(m_pMsgType == NULL);
+        assert(m_pMsgObj == NULL);
 
         pData = new RtspData;
         if (pData)
@@ -631,7 +631,7 @@ int RtspMsg::SetBodySize(unsigned int nSize)
         return Z3_ENOMEM;
 }
 
-bool RtspMsg::ToStringImpl(char **ppBuf, unsigned int *pnSize)
+bool RtspMsg::ToString(char **ppBuf, unsigned int *pnSize)
 {
         char            *pString;
         RTSP_MSG_TYPE   msgType;
@@ -644,12 +644,12 @@ bool RtspMsg::ToStringImpl(char **ppBuf, unsigned int *pnSize)
                 return false;
         }
 
-        msgType = m_pMsgType->GetMsgType();
+        msgType = m_pMsgObj->GetMsgType();
         switch (msgType)
         {
         case RTSP_MSG_REQUEST:
                 {
-                        RtspRequest *pRequest = dynamic_cast<RtspRequest *>(m_pMsgType);
+                        RtspRequest *pRequest = dynamic_cast<RtspRequest *>(m_pMsgObj);
                         nCount = _snprintf_s(pString, RTSP_MSG_STRING_MAX_LENGTH, RTSP_MSG_STRING_MAX_LENGTH, "%s %s RTSP/1.0\r\n",
                                         RTSP_METHOD_AS_TEXT(pRequest->GetMethod()),
                                         pRequest->GetUri());
@@ -664,7 +664,7 @@ bool RtspMsg::ToStringImpl(char **ppBuf, unsigned int *pnSize)
                 }
         case RTSP_MSG_RESPONSE:
                 {
-                        RtspResponse *pResponse = dynamic_cast<RtspResponse *>(m_pMsgType);
+                        RtspResponse *pResponse = dynamic_cast<RtspResponse *>(m_pMsgObj);
                         nCount = _snprintf_s(pString, RTSP_MSG_STRING_MAX_LENGTH, RTSP_MSG_STRING_MAX_LENGTH, "RTSP/1.0 %d %s\r\n",
                                         pResponse->GetStatusCode(), 
                                         pResponse->GetReason());
@@ -679,7 +679,7 @@ bool RtspMsg::ToStringImpl(char **ppBuf, unsigned int *pnSize)
                 }
         case RTSP_MSG_DATA:
                 {
-                        RtspData *pData = dynamic_cast<RtspData *>(m_pMsgType);
+                        RtspData *pData = dynamic_cast<RtspData *>(m_pMsgObj);
 
                         if (RTSP_MSG_STRING_MAX_LENGTH <= m_nBodySize + 4)
                         {
@@ -801,10 +801,10 @@ int RtspMsg::GetResponse(
 {
         RtspResponse    *pResponse;
 
-        if (m_pMsgType->GetMsgType() != RTSP_MSG_RESPONSE)
+        if (m_pMsgObj->GetMsgType() != RTSP_MSG_RESPONSE)
                 return Z3_ERROR;
 
-        pResponse = dynamic_cast<RtspResponse *>(m_pMsgType);
+        pResponse = dynamic_cast<RtspResponse *>(m_pMsgObj);
         *code = pResponse->GetStatusCode();
         *pReason = pResponse->GetReason();
         *pVersion = pResponse->GetVersion();

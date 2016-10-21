@@ -2,15 +2,17 @@
 #define _Z3_RTCP_MSG_HPP_
 
 #include "z3_rtcp.hpp"
-#include "z3_obj.hpp"
+#include "z3_msg.hpp"
 
 namespace Z3 {
 
-        class RTCPPacket : public MemoryObject
+        class RTCPPacket : public Msg
         {
         public:
                 RTCPPacket();
                 virtual ~RTCPPacket();
+                
+                unsigned int    ProtoID();
 
                 void            InitPacket(char *pBuf, size_t nBufSize);
                 unsigned char   GetPayloadType();

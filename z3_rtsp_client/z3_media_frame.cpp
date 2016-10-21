@@ -17,9 +17,3 @@ unsigned int MediaFrame::ProtoID()
 {
         return MEDIA_FRAME_ID;
 }
-
-bool MediaFrame::ToStringImpl(char **ppbuf, unsigned int *pnSize)
-{
-        TRACE_ERROR("This function is useless in object MediaFrame\r\n");
-        return false;
-}

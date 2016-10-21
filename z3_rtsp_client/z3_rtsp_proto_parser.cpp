@@ -148,7 +148,7 @@ int RtspProtoParser::Parse(const char *pBuf, unsigned int nLen, void *pData, Msg
                                 if (pos[1] == '\n')
                                 {
                                         if (Z3_EOK == m_pRtspMsg->GetHeader(RTSP_HDR_CONTENT_LENGTH, &hdrval, 0)
-                                                && m_pRtspMsg->GetMsgType()->GetMsgType() ==  RTSP_MSG_RESPONSE)
+                                                && m_pRtspMsg->GetMsgObj()->GetMsgType() ==  RTSP_MSG_RESPONSE)
                                         {
                                                 /* there is, prepare to read the body */
                                                 lHdrLength = atol (hdrval);

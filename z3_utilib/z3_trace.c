@@ -493,7 +493,7 @@ static int dump(long level, const char *token, const unsigned char *buf, unsigne
                 }                
         }
 
-        bytes += sprintf_s(line + bytes, sizeof(line) - bytes, "\r\n\r\n");
+        bytes += sprintf_s(line + bytes, sizeof(line) - bytes, "\r\n");
         /*trace_string(token, line);*/
         list = list_add_string(list, line, bytes + 1);
 

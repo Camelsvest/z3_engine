@@ -73,11 +73,11 @@ namespace Z3 {
                 RTSP_MSG_DATA
         } RTSP_MSG_TYPE;
 
-        class RtspMsgType : public MemoryObject
+        class RtspMsgObj : public MemoryObject
         {
         public:
-                RtspMsgType(RTSP_MSG_TYPE msgType);
-                virtual ~RtspMsgType();
+                RtspMsgObj(RTSP_MSG_TYPE msgType);
+                virtual ~RtspMsgObj();
 
                 inline RTSP_MSG_TYPE    GetMsgType() { return m_msgType; }
 
@@ -85,7 +85,7 @@ namespace Z3 {
                 RTSP_MSG_TYPE   m_msgType;
         };
 
-        class RtspRequest : public RtspMsgType
+        class RtspRequest : public RtspMsgObj
         {
         public:
                 RtspRequest();
@@ -113,7 +113,7 @@ namespace Z3 {
 		RTSP_VERSION	m_version;
         };
 
-        class RtspResponse : public RtspMsgType
+        class RtspResponse : public RtspMsgObj
         {
         public:
                 RtspResponse();
@@ -134,7 +134,7 @@ namespace Z3 {
 		RTSP_VERSION	        m_version;
         };
 
-        class RtspData : public RtspMsgType
+        class RtspData : public RtspMsgObj
         {
         public:
                 RtspData();
@@ -156,6 +156,7 @@ namespace Z3 {
                 RtspMsg();
 
                 virtual unsigned int    ProtoID();
+                virtual bool            ToString(char **ppbuf, unsigned int *pnSize);
 
                 int     Unset();
 
@@ -175,18 +176,16 @@ namespace Z3 {
                 inline unsigned int GetBodySize() { return m_nBodySize; }
 
                 RTSP_VERSION    GetVersion();
-                int     SetVersion(RTSP_VERSION version);
+                int             SetVersion(RTSP_VERSION version);
 
                 RTSP_METHOD     GetMethod();
-                int     SetMethod(RTSP_METHOD method);
+                int             SetMethod(RTSP_METHOD method);
 
                 int     AddHeader(RTSP_HEADER_FIELD field, const char *pValue, unsigned int nLength);
                 int     GetHeader(RTSP_HEADER_FIELD field, char **pValue, int nIndex = 0);
                 int     RemoveHeader(RTSP_HEADER_FIELD field, int nIndex);
 
-                virtual bool    ToStringImpl(char **ppbuf, unsigned int *pnSize);
-
-                inline RtspMsgType*     GetMsgType() { return m_pMsgType; }
+                inline RtspMsgObj*      GetMsgObj() { return m_pMsgObj; }
                 inline unsigned char*   GetBody(int *pnBodySize) 
                 {
                         *pnBodySize = m_nBodySize;
@@ -201,7 +200,7 @@ namespace Z3 {
                 unsigned int            AppendHeaders(char *pBuf/*output*/, unsigned int nBufSize);
 
         private:
-                RtspMsgType             *m_pMsgType;
+                RtspMsgObj             *m_pMsgObj;
 
                 RtspKeyValueArray       *m_pHdrFields;
 

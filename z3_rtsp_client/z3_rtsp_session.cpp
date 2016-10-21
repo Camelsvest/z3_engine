@@ -184,18 +184,24 @@ ProtoParser* RtspSession::GetProtoParser()
 int RtspSession::Dispatch(Msg *pMsg, void *pData)
 {
         RtspMsg                 *pRtspMsg;
-        unsigned int            nLength;
         RTSP_STATUS_CODE        code;
         RTSP_VERSION            version;
-        char                    *pReason, *pCSeq;
+        char                    *pReason, *pCSeq, *pBuf;
         int                     result;
+        uint32_t                nBufSize;
 
         assert(pMsg->ProtoID() == RTSP_PROTO_ID);
         pRtspMsg = dynamic_cast<RtspMsg *>(pMsg);
 
-        if (pRtspMsg->GetMsgType()->GetMsgType() != RTSP_MSG_RESPONSE)
+        if (pRtspMsg->GetMsgObj()->GetMsgType() != RTSP_MSG_RESPONSE)
         {
-                TRACE_ERROR("Received invalid RTSP message\r\n%s\r\n", pRtspMsg->ToString(&nLength));
+                TRACE_ERROR("Received invalid RTSP message\r\n");
+
+                if (pRtspMsg->ToString(&pBuf, &nBufSize))
+                {
+                        TRACE_DUMP(LOG_ERROR, pBuf, nBufSize);
+                        Z3_FREE_POINTER(pBuf);
+                }
                 return EINVAL;
         }
         

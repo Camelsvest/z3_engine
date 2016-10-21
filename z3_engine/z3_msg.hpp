@@ -11,20 +11,10 @@ namespace Z3 {
                 Msg(uint32_t nObjID = INVALID_OBJ_ID);
 
                 virtual unsigned int    ProtoID() = 0;
-                char*                   ToString(unsigned int *pnSize);
-
-                inline char *           GetBuffer() { return m_pBuffer; }
-                inline unsigned int     GetBufSize() { return m_nBufSize; }
-                inline void             SetBufSize(unsigned int nSize) { m_nBufSize = nSize; }
+                virtual bool            ToString(char **ppbuf, unsigned int *pnSize);
 
         protected:
                 virtual ~Msg();
-
-                virtual bool            ToStringImpl(char **ppbuf, unsigned int *pnSize) = 0;
-
-        private:
-                char            *m_pBuffer;
-                unsigned int    m_nBufSize;
         };        
 
 };

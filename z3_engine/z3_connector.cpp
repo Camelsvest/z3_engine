@@ -234,15 +234,19 @@ PADDRINFOEX Z3::Connector::InterpretDNS()
 
 int Connector::WriteMsg(Msg *pMsg)
 {
-        char            *pBuf;
+        int             nError;
         unsigned int    nSize;
+        char            *pBuf = NULL;
 
         assert(pMsg);
-        pBuf = pMsg->ToString(&nSize);
-        if (pBuf == NULL || nSize <= 0)
+        if (!pMsg->ToString(&pBuf, &nSize))
                 return Z3_EINVAL;
 
-        return WriteMsg(pBuf, nSize);
+        assert(nSize > 0 && pBuf != NULL);
+        nError = WriteMsg(pBuf, nSize);
+
+        Z3_FREE_POINTER(pBuf);
+        return nError;
 }
 
 int Connector::WriteMsg(const char *pBuf, uint32_t nSize)
