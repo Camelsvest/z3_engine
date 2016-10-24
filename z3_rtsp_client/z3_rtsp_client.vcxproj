@@ -78,6 +78,7 @@
     <None Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="rtcp_from_spec.h" />
     <ClInclude Include="z3_h264_frame.hpp" />
     <ClInclude Include="z3_media_frame.hpp" />
     <ClInclude Include="z3_media_ports.hpp" />
@@ -85,6 +86,7 @@
     <ClInclude Include="z3_rtcp_msg.hpp" />
     <ClInclude Include="z3_rtp.hpp" />
     <ClInclude Include="z3_rtp_msg.hpp" />
+    <ClInclude Include="z3_rtp_reception_stats.hpp" />
     <ClInclude Include="z3_rtp_udp_session.hpp" />
     <ClInclude Include="z3_rtsp_client.hpp" />
     <ClInclude Include="z3_rtsp_def.hpp" />
@@ -97,11 +99,13 @@
     <ClInclude Include="z3_sdp.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="rtcp_from_spec.c" />
     <ClCompile Include="z3_h264_frame.cpp" />
     <ClCompile Include="z3_media_frame.cpp" />
     <ClCompile Include="z3_media_ports.cpp" />
     <ClCompile Include="z3_rtcp_msg.cpp" />
     <ClCompile Include="z3_rtp_msg.cpp" />
+    <ClCompile Include="z3_rtp_reception_stats.cpp" />
     <ClCompile Include="z3_rtp_udp_session.cpp" />
     <ClCompile Include="z3_rtsp_client.cpp" />
     <ClCompile Include="z3_rtsp_def.cpp" />

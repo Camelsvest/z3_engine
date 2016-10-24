@@ -6,14 +6,12 @@
 
 namespace Z3 {
 
-        class RTCPPacket : public Msg
+        class RTCPPacket : public MemoryObject
         {
         public:
                 RTCPPacket();
                 virtual ~RTCPPacket();
                 
-                unsigned int    ProtoID();
-
                 void            InitPacket(char *pBuf, size_t nBufSize);
                 unsigned char   GetPayloadType();
                 
@@ -22,6 +20,24 @@ namespace Z3 {
         protected:
                 char            *m_pPacket;
                 uint32_t        m_nPacketSize;
+        };
+
+        class RTCPPacketList : public Msg
+        {
+        public:
+                RTCPPacketList();
+
+                virtual unsigned int    ProtoID();
+
+                int             Push(RTCPPacket *pPacket);
+                RTCPPacket*     Pop(void);
+
+                inline bool     IsEmpty() { return m_lstRtcpPackets.empty(); }
+
+        protected:
+                virtual ~RTCPPacketList();
+
+                std::list<RTCPPacket *> m_lstRtcpPackets;
         };
 
         // Report Block

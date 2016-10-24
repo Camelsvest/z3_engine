@@ -241,7 +241,7 @@ void TRACE_UNINIT()
         }
 }
 
-static int gettimeofday(struct timeval* tp, int *tz)
+int gettimeofday(struct timeval* tp, int *tz)
 {
         DWORD           result;
         LARGE_INTEGER   tickNow;

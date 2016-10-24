@@ -6,8 +6,7 @@
 using namespace Z3;
 
 RTCPPacket::RTCPPacket()
-        : Msg(RTCP_MSG_ID)
-        , m_pPacket(NULL)
+        : m_pPacket(NULL)
         , m_nPacketSize(0)
 {
 }
@@ -15,11 +14,6 @@ RTCPPacket::RTCPPacket()
 RTCPPacket::~RTCPPacket()
 {
         Z3_FREE_POINTER(m_pPacket);
-}
-
-unsigned int RTCPPacket::ProtoID()
-{
-        return RTCP_PROTO_ID;
 }
 
 void RTCPPacket::InitPacket(char *pBuf, size_t nBufSize)
@@ -47,6 +41,49 @@ uint16_t RTCPPacket::GetPacketLength()
 
         return RTCP_PKT_LENGTH(m_pPacket);
 }
+
+RTCPPacketList::RTCPPacketList()
+        : Msg(RTCP_MSG_ID)
+{
+}
+
+RTCPPacketList::~RTCPPacketList()
+{
+        RTCPPacket *pPacket;
+        std::list<RTCPPacket *>::iterator itera;
+
+        for (itera = m_lstRtcpPackets.begin(); itera != m_lstRtcpPackets.end(); itera++)
+        {
+                pPacket = *itera;
+                delete pPacket;
+        }
+}
+
+unsigned int RTCPPacketList::ProtoID()
+{
+        return RTCP_PROTO_ID;
+}
+
+int RTCPPacketList::Push(RTCPPacket *pPacket)
+{
+        m_lstRtcpPackets.push_back(pPacket);
+
+        return m_lstRtcpPackets.size();
+}
+
+RTCPPacket* RTCPPacketList::Pop(void)
+{
+        RTCPPacket *pPacket = NULL;
+
+        if (!m_lstRtcpPackets.empty())
+        {
+                pPacket = *m_lstRtcpPackets.begin();
+                m_lstRtcpPackets.pop_front();
+        }
+
+        return pPacket;
+}
+
 
 RB::RB()
         : m_pBlock(NULL)

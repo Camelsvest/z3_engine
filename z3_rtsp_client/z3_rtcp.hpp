@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-
+#pragma pack(push, 1)
 
 typedef enum {
         RTCP_SR   = 200,
@@ -30,17 +30,17 @@ typedef enum {              /* 源描述类型 */
 
 typedef struct _rtcp_comm_header {
 #if _BYTE_ORDER == _LITTLE_ENDIAN
-        uint32_t count:5;          /* 报告块计数 */
-        uint32_t padding:1;
-        uint32_t version:2;
+        uint8_t count:5;          /* 报告块计数 */
+        uint8_t padding:1;
+        uint8_t version:2;
 #elif _BYTE_ORDER == _BIG_ENDIAN
-        uint32_t version:2;
-        uint32_t padding:1;
-        uint32_t count:5;
+        uint8_t version:2;
+        uint8_t padding:1;
+        uint8_t count:5;
 #else
 # error "Invalid byte order!"
 #endif
-        uint32_t packet_type:8;    /* RTCP报文类型 */
+        uint8_t packet_type;    /* RTCP报文类型 */
         uint16_t length;           /* RTCP包长(含头，4字节为单位)-1*/
 } RTCP_COMM_HEADER;
 
@@ -104,7 +104,7 @@ typedef struct _rtcp_app_header {
 
 #define RTCP_PKT_RC(pkt)        (((RTCP_COMM_HEADER *)pkt)->count)
 #define RTCP_PKT_PT(pkt)        (((RTCP_COMM_HEADER *)pkt)->packet_type)
-#define RTCP_PKT_LENGTH(pkt)    (((RTCP_COMM_HEADER *)pkt)->length)
+#define RTCP_PKT_LENGTH(pkt)    ((ntohs((((RTCP_COMM_HEADER *)pkt)->length)) + 1) * 4)
 #define RTCP_PKT_PADDING(pkt)   (((RTCP_COMM_HEADER *)pkt)->padding)
 
 #define RB_BLK_SSRC(buffer)     (((RTCP_RR_BLOCK *)buffer)->ssrc)
@@ -114,5 +114,7 @@ typedef struct _rtcp_app_header {
 #define RB_BLK_JITTER(buffer)   (((RTCP_RR_BLOCK *)buffer)->jitter)
 #define RB_BLK_LSR(buffer)      (((RTCP_RR_BLOCK *)buffer)->lsr)
 #define RB_BLK_DLSR(buffer)     (((RTCP_RR_BLOCK *)buffer)->dlsr)
+
+#pragma pack(pop)
 
 #endif

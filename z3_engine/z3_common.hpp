@@ -18,6 +18,7 @@
 
 #include <list>
 #include <queue>
+#include <map>
 #include <algorithm>
 
 #include "z3_trace.h"
