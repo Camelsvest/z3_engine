@@ -15,6 +15,7 @@ void* thread_func(void *args)
 	char	*buf;
 	ssize_t	read_bytes;
 	size_t	buf_size;
+	int     index = 0;
 
 	fp = fopen("./sample.txt", "r");
 	if (!fp)
@@ -38,6 +39,8 @@ void* thread_func(void *args)
 		buf[read_bytes] = '\0';
 
 		TRACE_INFO("%s", buf);
+		++index;
+		buf = (char *)z3_realloc(buf, buf_size + index);
 		read_bytes = getline(&buf, &buf_size, fp);
 	}
 

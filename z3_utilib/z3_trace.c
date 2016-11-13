@@ -2,6 +2,7 @@
   #include <Windows.h>
   #include <process.h>
 #else
+  #define _GNU_SOURCE
   #include <pthread.h>
   #include <sys/time.h>
 #endif
@@ -119,7 +120,8 @@ static int shipping(const char *string, int size_with_null)
         ReleaseMutex(G_TRUCK_INFO->mutex);        
         SetEvent(G_TRUCK_INFO->msg_event);
 #else
-        error = pthread_cond_signal(G_TRUCK_INFO->msg_event);
+        //error = pthread_cond_signal(G_TRUCK_INFO->msg_event);
+	error = pthread_cond_broadcast(G_TRUCK_INFO->msg_event);
         assert(error == 0);
 
         error = pthread_mutex_unlock(G_TRUCK_INFO->mutex);
@@ -219,7 +221,7 @@ static void* thread_func(void *args)
         while (!quit)
         {
                 gettimeofday(&now, NULL);
-                timeout.tv_nsec = now.tv_usec * 1000 + 10000;   // 10 ms
+                timeout.tv_nsec = now.tv_usec * 1000 + 2000;   // 2 ms
                 timeout.tv_sec = now.tv_sec;
                 if (timeout.tv_nsec > 1000000000)
                 {
@@ -235,7 +237,8 @@ static void* thread_func(void *args)
                 {
                         // I'm huangry
 //			printf("I'm huangry!\r\n");
-                        pthread_cond_signal(truck_info->idle_event);
+                        //pthread_cond_signal(truck_info->idle_event);
+			pthread_cond_broadcast(truck_info->idle_event);
 
 			succeed = pthread_mutex_unlock(truck_info->msg_mutex);
 			assert(succeed == 0);
@@ -260,7 +263,8 @@ static void* thread_func(void *args)
                 assert(succeed == 0);
 
                 // I'm huangry
-                succeed = pthread_cond_signal(truck_info->idle_event);
+                //succeed = pthread_cond_signal(truck_info->idle_event);
+		succeed = pthread_cond_broadcast(truck_info->idle_event);
                 assert(succeed == 0);                
         }
 
@@ -374,8 +378,10 @@ static int start_truck(long level)
 
 static void stop_truck(void)
 {
-        int     error;
-        void    *ret;
+        int             error;
+        void            *ret;
+        struct timeval  now;
+        struct timespec timeout;        
 
         assert(G_TRUCK_INFO);
 
@@ -386,11 +392,27 @@ static void stop_truck(void)
         error = pthread_mutex_unlock(G_TRUCK_INFO->mutex);
         assert(error == 0);
 
-        error = pthread_cond_signal(G_TRUCK_INFO->msg_event);
-        assert(error == 0);
+        do
+        {
+                //error = pthread_cond_signal(G_TRUCK_INFO->msg_event);
+		error = pthread_cond_broadcast(G_TRUCK_INFO->msg_event);
+                assert(error == 0);
+
+                gettimeofday(&now, NULL);
+                timeout.tv_nsec = now.tv_usec * 1000 + 10000;   // 10 ms
+                timeout.tv_sec = now.tv_sec;
+                if (timeout.tv_nsec > 1000000000)
+                {
+                        timeout.tv_sec += 1;
+                        timeout.tv_nsec -= 1000000000;
+                }
+
+                error = pthread_timedjoin_np(G_TRUCK_INFO->thread, &ret, &timeout);                
+        }
+        while (error != 0);
         
-        error = pthread_join(G_TRUCK_INFO->thread, &ret);
-        assert(error == 0);
+        //error = pthread_join(G_TRUCK_INFO->thread, &ret);
+        //assert(error == 0);
 
         pthread_mutex_destroy(G_TRUCK_INFO->mutex);
         free(G_TRUCK_INFO->mutex);

@@ -7,6 +7,7 @@
 
         #define z3_malloc(size)         _z3_malloc(size, __FILE__, __LINE__)
         #define z3_calloc(a, b)         _z3_calloc(a, b, __FILE__, __LINE__)
+        #define z3_realloc(a, b)        _z3_realloc(a, b, __FILE__, __LINE__)
         #define z3_free(p)              _z3_free(p)
 
         #ifdef __cplusplus
@@ -18,6 +19,7 @@
 
         void*   _z3_malloc(size_t size, char *filename, unsigned int line);
         void*   _z3_calloc(size_t num, size_t size, char *filename, unsigned int line);
+	void*   _z3_realloc(void *ptr, size_t size, char *filename, unsigned int line);
         void    _z3_free(void *memblock);
 
 
@@ -29,6 +31,7 @@
         #define z3_alloc_uninit()
         #define z3_malloc(size)         malloc(size)
         #define z3_calloc(a, b)         calloc(a, b)
+        #define z3_realloc(a, b)        realloc(a, b)
         #define z3_free(p)              free(p)
 
         #define _z3_malloc(a, b, c)     malloc(a)
