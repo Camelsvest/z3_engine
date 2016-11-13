@@ -93,16 +93,9 @@ static int shipping(const char *string, int size_with_null)
         assert(result == WAIT_OBJECT_0);
 #else
         int     error;
-
-	error = pthread_mutex_lock(G_TRUCK_INFO->idle_mutex);
-	assert(error == 0);
-
         error = pthread_cond_wait(G_TRUCK_INFO->idle_event, G_TRUCK_INFO->idle_mutex);
         assert(error == 0);
         
-	error = pthread_mutex_unlock(G_TRUCK_INFO->idle_mutex);
-	assert(error == 0);
-
         error = pthread_mutex_lock(G_TRUCK_INFO->mutex);
         assert(error == 0);
 #endif
@@ -203,12 +196,11 @@ static unsigned __stdcall thread_func(void *args)
         return 0;
 }        
 #else
-static void* thread_func(void *args)
+void* thread_func(void *args)
 {
 
         truck_t         *truck_info;
-        BOOL            quit;
-	int		succeed;
+        BOOL            succeed, quit;
         struct timeval  now;
         struct timespec timeout;
         
@@ -227,25 +219,14 @@ static void* thread_func(void *args)
                         timeout.tv_nsec -= 1000000000;
                 }
                 
-		succeed = pthread_mutex_lock(truck_info->msg_mutex);
-		assert(succeed == 0);
-
                 succeed = pthread_cond_timedwait(truck_info->msg_event, truck_info->msg_mutex, &timeout);
                 if (succeed != 0)
                 {
+
                         // I'm huangry
-//			printf("I'm huangry!\r\n");
                         pthread_cond_signal(truck_info->idle_event);
-
-			succeed = pthread_mutex_unlock(truck_info->msg_mutex);
-			assert(succeed == 0);
-
                         continue;
                 }
-
-		succeed = pthread_mutex_unlock(truck_info->msg_mutex);
-		assert(succeed == 0);
-
 
                 succeed = pthread_mutex_lock(truck_info->mutex);
                 assert(succeed == 0);

@@ -1,4 +1,8 @@
+
+#if defined(WIN32) || defined(_WIN32)
 #include <Windows.h>
+#endif
+
 #include <assert.h>
 #include <stdlib.h>
 #include <malloc.h>
