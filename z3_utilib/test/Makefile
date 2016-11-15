@@ -1,10 +1,13 @@
 # Makefile for test
 
-C++	= g++
-CC 	= gcc
-AR 	= ar
-LD	= ld
+export CROSS_COMPILE?= arm-hisiv100nptl-linux-
+
+C++	= $(CROSS_COMPILE)g++
+CC 	= $(CROSS_COMPILE)gcc
+AR 	= $(CROSS_COMPILE)ar
+LD	= $(CROSS_COMPILE)ld
 MAKE	= make
+RANLIB  = $(CROSS_COMPILE)ranlib
 
 PRJ_CFLAGS	+= ${CFLAGS}
 PRJ_CFLAGS	+= -g -pthread -Wall -fno-inline -fstack-protector -fPIC -DZ3_MEM_DEBUG
@@ -48,8 +51,11 @@ clean:
 	@rm ${C_OBJS}
 
 install:
-	@echo "Sorry, install command will be enable in the future.\n"
+	test -d $(INSTALL_DIR)/bin || mkdir -p $(INSTALL_DIR)/bin
+	cp -f ./test $(INSTALL_DIR)/bin/z3_test
+	cp -f ./sample.txt  $(INSTALL_DIR)/bin/sample.txt
 
 uninstall:
-	@echo "Sorry, uninstall command will be enable in the future.\n"
+	rm -rf $(INSTALL_DIR)/bin/z3_test
+	rm -rf $(INSTALL_DIR)/bin/sample.txt
 

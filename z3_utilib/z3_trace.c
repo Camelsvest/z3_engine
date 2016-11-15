@@ -1,10 +1,13 @@
 #if defined(WIN32) || defined(_WIN32)
-  #include <Windows.h>
-  #include <process.h>
+        #include <Windows.h>
+        #include <process.h>
 #else
-  #define _GNU_SOURCE
-  #include <pthread.h>
-  #include <sys/time.h>
+        #ifndef _GNU_SOURCE
+                #define _GNU_SOURCE
+        #endif
+        #include <pthread.h>
+        #include <sys/time.h>
+        #include <unistd.h>
 #endif
 #include <assert.h>
 #include <stdio.h>
@@ -39,19 +42,16 @@ struct _truck
 {
 #if defined(WIN32) || defined(_WIN32)    
         HANDLE          thread;
-        HANDLE          mutex;
+        HANDLE          msg_mutex;
         HANDLE          msg_event;
-        HANDLE          idle_event;
 #else
         pthread_t       thread;
-        pthread_mutex_t *mutex;
 
         pthread_cond_t  *msg_event;
         pthread_mutex_t *msg_mutex;
         
-        pthread_cond_t  *idle_event;
-        pthread_mutex_t *idle_mutex;
 #endif
+        char		*buf;
         long            quit;
         z3_list_t       *string_list;
 
@@ -85,28 +85,16 @@ static int shipping(const char *string, int size_with_null)
         
 #if defined(WIN32) || defined(_WIN32)
         DWORD   result;
-        HANDLE  handles[2];
 
-        handles[0] = G_TRUCK_INFO->mutex;
-        handles[1] = G_TRUCK_INFO->idle_event;
-
-        result = WaitForMultipleObjects(2, handles, TRUE, INFINITE);
+        result = WaitForSingleObject(G_TRUCK_INFO->msg_mutex, INFINITE);
         assert(result == WAIT_OBJECT_0);
 #else
         int     error;
 
-	error = pthread_mutex_lock(G_TRUCK_INFO->idle_mutex);
-	assert(error == 0);
-
-        error = pthread_cond_wait(G_TRUCK_INFO->idle_event, G_TRUCK_INFO->idle_mutex);
-        assert(error == 0);
-        
-	error = pthread_mutex_unlock(G_TRUCK_INFO->idle_mutex);
-	assert(error == 0);
-
-        error = pthread_mutex_lock(G_TRUCK_INFO->mutex);
+        error = pthread_mutex_lock(G_TRUCK_INFO->msg_mutex);
         assert(error == 0);
 #endif
+
 
         msg = (char *)malloc(size_with_null);
         assert(msg);
@@ -116,15 +104,15 @@ static int shipping(const char *string, int size_with_null)
         if (!G_TRUCK_INFO->string_list)
                 G_TRUCK_INFO->string_list = list;
 
+
 #if defined(WIN32) || defined(_WIN32)
-        ReleaseMutex(G_TRUCK_INFO->mutex);        
+        ReleaseMutex(G_TRUCK_INFO->msg_mutex);
         SetEvent(G_TRUCK_INFO->msg_event);
 #else
-        //error = pthread_cond_signal(G_TRUCK_INFO->msg_event);
-	error = pthread_cond_broadcast(G_TRUCK_INFO->msg_event);
+	error = pthread_cond_signal(G_TRUCK_INFO->msg_event);
         assert(error == 0);
 
-        error = pthread_mutex_unlock(G_TRUCK_INFO->mutex);
+        error = pthread_mutex_unlock(G_TRUCK_INFO->msg_mutex);
         assert(error == 0);
 #endif
 
@@ -143,37 +131,12 @@ static unsigned __stdcall thread_func(void *args)
         assert(truck_info);
 
         handle_array[0] = truck_info->msg_event;
-        handle_array[1] = truck_info->mutex;
+        handle_array[1] = truck_info->msg_mutex;
 
         quit = FALSE;
         while (!quit)
         {
-                result = WaitForMultipleObjects(2, handle_array, TRUE, 50);
-                if (result == WAIT_TIMEOUT)
-                {
-                        result = WaitForSingleObject(truck_info->msg_event, 0);
-                        if (result == WAIT_OBJECT_0)
-                        {
-                                succeed = ResetEvent(truck_info->idle_event);
-                                assert(succeed);
-
-                                // cannot retrieve mutex at this time 
-                        }
-                        else
-                        {
-                                // no new message in this situation, so we
-                                // check whether we're quiting
-                                result = WaitForSingleObject(truck_info->mutex, INFINITE);
-                                assert(result == WAIT_OBJECT_0);
-                                
-                                quit = truck_info->quit;
-                                succeed = ReleaseMutex(truck_info->mutex);
-                                assert(succeed);
-                        }
-                        
-                        continue;
-                }
-                
+                result = WaitForMultipleObjects(2, handle_array, TRUE, INFINITE);               
                 assert(result == WAIT_OBJECT_0);
               
                 z3_list_foreach(truck_info->string_list, for_each, NULL);
@@ -182,24 +145,22 @@ static unsigned __stdcall thread_func(void *args)
 
                 quit = truck_info->quit;
 
-                succeed = ReleaseMutex(truck_info->mutex);
+                succeed = ReleaseMutex(truck_info->msg_mutex);
                 assert(succeed);
 
                 succeed = ResetEvent(truck_info->msg_event);
                 assert(succeed);
 
-                succeed = SetEvent(truck_info->idle_event);
-                assert(succeed);
         }
 
-        succeed = WaitForSingleObject(truck_info->mutex, 20);
+        succeed = WaitForSingleObject(truck_info->msg_mutex, 20);
         assert(succeed == WAIT_OBJECT_0);
 
         z3_list_foreach(truck_info->string_list, for_each, NULL);
         z3_list_free(truck_info->string_list);
         truck_info->string_list = NULL;
 
-        succeed = ReleaseMutex(truck_info->mutex);
+        succeed = ReleaseMutex(truck_info->msg_mutex);
         assert(succeed);
 
         return 0;
@@ -220,37 +181,32 @@ static void* thread_func(void *args)
         quit = FALSE;
         while (!quit)
         {
+                /*
                 gettimeofday(&now, NULL);
-                timeout.tv_nsec = now.tv_usec * 1000 + 2000;   // 2 ms
+                timeout.tv_nsec = now.tv_usec * 1000 + 10000;   // 10 ms
                 timeout.tv_sec = now.tv_sec;
                 if (timeout.tv_nsec > 1000000000)
                 {
                         timeout.tv_sec += 1;
                         timeout.tv_nsec -= 1000000000;
                 }
+                */
                 
 		succeed = pthread_mutex_lock(truck_info->msg_mutex);
 		assert(succeed == 0);
 
+                /*
                 succeed = pthread_cond_timedwait(truck_info->msg_event, truck_info->msg_mutex, &timeout);
                 if (succeed != 0)
                 {
-                        // I'm huangry
-//			printf("I'm huangry!\r\n");
-                        //pthread_cond_signal(truck_info->idle_event);
-			pthread_cond_broadcast(truck_info->idle_event);
-
 			succeed = pthread_mutex_unlock(truck_info->msg_mutex);
 			assert(succeed == 0);
 
+                        usleep(1000); // 1 ms
                         continue;
                 }
-
-		succeed = pthread_mutex_unlock(truck_info->msg_mutex);
-		assert(succeed == 0);
-
-
-                succeed = pthread_mutex_lock(truck_info->mutex);
+                */
+                succeed = pthread_cond_wait(truck_info->msg_event, truck_info->msg_mutex);
                 assert(succeed == 0);
 
                 quit = truck_info->quit;
@@ -259,23 +215,18 @@ static void* thread_func(void *args)
                 z3_list_free(truck_info->string_list);
                 truck_info->string_list = NULL;
                 
-                succeed = pthread_mutex_unlock(truck_info->mutex);
-                assert(succeed == 0);
-
-                // I'm huangry
-                //succeed = pthread_cond_signal(truck_info->idle_event);
-		succeed = pthread_cond_broadcast(truck_info->idle_event);
+                succeed = pthread_mutex_unlock(truck_info->msg_mutex);
                 assert(succeed == 0);                
         }
 
-        succeed = pthread_mutex_lock(truck_info->mutex);
+        succeed = pthread_mutex_lock(truck_info->msg_mutex);
         assert(succeed == 0);
 
         z3_list_foreach(truck_info->string_list, for_each, NULL);
         z3_list_free(truck_info->string_list);
         truck_info->string_list = NULL;
 
-        succeed = pthread_mutex_unlock(truck_info->mutex);
+        succeed = pthread_mutex_unlock(truck_info->msg_mutex);
         assert(succeed == 0);
 
         return 0;        
@@ -293,14 +244,11 @@ static int start_truck(long level)
                 G_TRUCK_INFO = (truck_t *)calloc(1, sizeof(truck_t));
                 assert(G_TRUCK_INFO);
 
-                G_TRUCK_INFO->mutex = CreateMutex(NULL, FALSE, NULL);
-                assert(G_TRUCK_INFO->mutex);
+                G_TRUCK_INFO->msg_mutex = CreateMutex(NULL, FALSE, NULL);
+                assert(G_TRUCK_INFO->msg_mutex);
 
                 G_TRUCK_INFO->msg_event = CreateEvent(NULL, TRUE, FALSE, NULL);
                 assert(G_TRUCK_INFO->msg_event);
-
-                G_TRUCK_INFO->idle_event = CreateEvent(NULL, TRUE, TRUE, NULL);
-                assert(G_TRUCK_INFO->idle_event);
 
 		G_TRUCK_INFO->inputted_bytes = 0;
 		G_TRUCK_INFO->outputted_bytes = 0;
@@ -318,21 +266,21 @@ static void stop_truck(void)
 
         assert(G_TRUCK_INFO);
 
-        result = WaitForSingleObject(G_TRUCK_INFO->mutex, INFINITE);
+        result = WaitForSingleObject(G_TRUCK_INFO->msg_mutex, INFINITE);
         assert(result == WAIT_OBJECT_0);
 
         G_TRUCK_INFO->quit = TRUE;
-        ReleaseMutex(G_TRUCK_INFO->mutex);
-
         SetEvent(G_TRUCK_INFO->msg_event);      // notify to quit
+
+        ReleaseMutex(G_TRUCK_INFO->msg_mutex);
+        
 
         result = WaitForSingleObject(G_TRUCK_INFO->thread, INFINITE);
         assert(result == WAIT_OBJECT_0);
 
         CloseHandle(G_TRUCK_INFO->thread);
-        CloseHandle(G_TRUCK_INFO->mutex);
+        CloseHandle(G_TRUCK_INFO->msg_mutex);
         CloseHandle(G_TRUCK_INFO->msg_event);
-        CloseHandle(G_TRUCK_INFO->idle_event);
 
         z3_list_free(G_TRUCK_INFO->string_list);
         free(G_TRUCK_INFO);
@@ -351,20 +299,11 @@ static int start_truck(long level)
                 G_TRUCK_INFO = (truck_t *)calloc(1, sizeof(truck_t));
                 assert(G_TRUCK_INFO);
 
-                G_TRUCK_INFO->mutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
-                pthread_mutex_init(G_TRUCK_INFO->mutex, NULL);
-
                 G_TRUCK_INFO->msg_event = (pthread_cond_t *)malloc(sizeof(pthread_cond_t));
                 pthread_cond_init(G_TRUCK_INFO->msg_event, NULL);
 
                 G_TRUCK_INFO->msg_mutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
                 pthread_mutex_init(G_TRUCK_INFO->msg_mutex, NULL);
-
-                G_TRUCK_INFO->idle_event = (pthread_cond_t *)malloc(sizeof(pthread_cond_t));
-                pthread_cond_init(G_TRUCK_INFO->idle_event, NULL);
-
-                G_TRUCK_INFO->idle_mutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
-                pthread_mutex_init(G_TRUCK_INFO->idle_mutex, NULL);
 
                 G_TRUCK_INFO->inputted_bytes = 0;
                 G_TRUCK_INFO->outputted_bytes = 0;
@@ -385,49 +324,27 @@ static void stop_truck(void)
 
         assert(G_TRUCK_INFO);
 
-        error = pthread_mutex_lock(G_TRUCK_INFO->mutex);
+        error = pthread_mutex_lock(G_TRUCK_INFO->msg_mutex);
         assert(error == 0);
 
         G_TRUCK_INFO->quit = TRUE;
-        error = pthread_mutex_unlock(G_TRUCK_INFO->mutex);
+
+        error = pthread_cond_signal(G_TRUCK_INFO->msg_event);
         assert(error == 0);
-
-        do
-        {
-                //error = pthread_cond_signal(G_TRUCK_INFO->msg_event);
-		error = pthread_cond_broadcast(G_TRUCK_INFO->msg_event);
-                assert(error == 0);
-
-                gettimeofday(&now, NULL);
-                timeout.tv_nsec = now.tv_usec * 1000 + 10000;   // 10 ms
-                timeout.tv_sec = now.tv_sec;
-                if (timeout.tv_nsec > 1000000000)
-                {
-                        timeout.tv_sec += 1;
-                        timeout.tv_nsec -= 1000000000;
-                }
-
-                error = pthread_timedjoin_np(G_TRUCK_INFO->thread, &ret, &timeout);                
-        }
-        while (error != 0);
         
-        //error = pthread_join(G_TRUCK_INFO->thread, &ret);
+        error = pthread_mutex_unlock(G_TRUCK_INFO->msg_mutex);
+        assert(error == 0);
+        
+        error = pthread_join(G_TRUCK_INFO->thread, &ret);
         //assert(error == 0);
 
-        pthread_mutex_destroy(G_TRUCK_INFO->mutex);
-        free(G_TRUCK_INFO->mutex);
-
-        pthread_mutex_destroy(G_TRUCK_INFO->msg_mutex);
+        error = pthread_mutex_destroy(G_TRUCK_INFO->msg_mutex);
+        assert(error == 0);
         free(G_TRUCK_INFO->msg_mutex);
 
-        pthread_cond_destroy(G_TRUCK_INFO->msg_event);
+        error = pthread_cond_destroy(G_TRUCK_INFO->msg_event);
+        assert(error == 0);
         free(G_TRUCK_INFO->msg_event);
-
-        pthread_mutex_destroy(G_TRUCK_INFO->idle_mutex);
-        free(G_TRUCK_INFO->idle_mutex);
-
-        pthread_cond_destroy(G_TRUCK_INFO->idle_event);
-        free(G_TRUCK_INFO->idle_event);
 
         z3_list_free(G_TRUCK_INFO->string_list);
         free(G_TRUCK_INFO);

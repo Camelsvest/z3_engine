@@ -1,9 +1,11 @@
 #if defined(WIN32) || defined(_WIN32)
-#include <Windows.h>
-#include <process.h>
+        #include <Windows.h>
+        #include <process.h>
 #else
-#define _GNU_SOURCE
-#include <pthread.h>
+        #ifndef _GNU_SOURCE
+                #define _GNU_SOURCE
+        #endif
+        #include <pthread.h>
 #endif
 
 #include <assert.h>
@@ -305,6 +307,10 @@ void* _z3_realloc(void *ptr, size_t size, char *filename, unsigned int line)
 #else
         int result;
 #endif
+	if (ptr == NULL)
+	{
+		return _z3_malloc(size, filename, line);
+	}
 
         head = (alloc_head_t *)ptr;
         head -= 1;
@@ -425,6 +431,9 @@ void _z3_free(void *memblock)
 	int result;
 #endif
 
+	if (memblock == NULL)
+		return;
+
         head = (alloc_head_t *)memblock;
         head -= 1;
 
@@ -464,4 +473,26 @@ void _z3_free(void *memblock)
 
         free(head);
 #endif
+}
+
+char * _z3_strdup(const char *s, char *filename, unsigned int line)
+{
+	size_t len;
+	char *buf = NULL;
+
+	len = strlen(s) + 1;
+	if (len > 1)
+	{
+		buf = (char *)_z3_malloc(len, filename, line);
+		if (buf)
+		{
+                #if defined(WIN32) || defined(_WIN32)
+                        strcpy_s(buf, len, s);
+                #else
+			strcpy(buf, s);
+                #endif
+		}
+	}
+
+	return buf;
 }

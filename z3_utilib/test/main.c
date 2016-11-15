@@ -7,12 +7,12 @@
 #include "z3_trace.h"
 
 #define MAX_BUF_SIZE	256
-#define MAX_THREADS	10
+#define MAX_THREADS	20
 
 void* thread_func(void *args)
 {
 	FILE	*fp;
-	char	*buf;
+	char	*buf, *dupbuf;
 	ssize_t	read_bytes;
 	size_t	buf_size;
 	int     index = 0;
@@ -38,9 +38,12 @@ void* thread_func(void *args)
 		assert(read_bytes < buf_size);
 		buf[read_bytes] = '\0';
 
-		TRACE_INFO("%s", buf);
-		++index;
-		buf = (char *)z3_realloc(buf, buf_size + index);
+		dupbuf = z3_strdup(buf);
+		TRACE_INFO("%s", dupbuf);
+		z3_free(dupbuf);
+
+		//++index;
+		//buf = (char *)z3_realloc(buf, buf_size + index);
 		read_bytes = getline(&buf, &buf_size, fp);
 	}
 
@@ -55,9 +58,9 @@ end2:
 
 int main(int argc, char *argv[])
 {
-	pthread_t	thread_ids[10];
+	pthread_t	thread_ids[MAX_THREADS];
 	int		error, index = 0;
-	void		*retval;
+	void		*retval = NULL;
 
 	TRACE_INIT(LOG_DEBUG);
 	z3_alloc_init();
@@ -76,7 +79,7 @@ int main(int argc, char *argv[])
 	while (index < MAX_THREADS)
 	{
 		error = pthread_join(thread_ids[index], &retval);
-		TRACE_NOTICE("pthread_join return %d\r\n", error);
+		TRACE_NOTICE("pthread_join return %d, index = %d\r\n", error, index);
 
 		++index;
 	}
