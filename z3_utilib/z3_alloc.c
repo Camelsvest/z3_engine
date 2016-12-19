@@ -12,7 +12,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include "z3_alloc.h"
-#include "z3_list.h"
+#ifdef Z3_HASH_ENABLE
+        #include "z3_hash.h"
+#else
+        #include "z3_list.h"
+#endif
 #include "z3_trace.h"
 
 #define ALIGN(size, alignment) (((size) + (alignment) - 1) & ~((alignment) - 1))
@@ -48,7 +52,12 @@ typedef struct _alloc_statistic
 #else
         pthread_mutex_t *mutex;
 #endif
+
+#ifdef Z3_HASH_ENABLE
+        z3_hash_t       *hash_table;
+#else
         z3_list_t       *memblock_list;
+#endif
         unsigned int    total_allocated_bytes;
         unsigned int    total_free_bytes;
         unsigned int    maximum_memory_bytes;
@@ -71,7 +80,12 @@ void _z3_alloc_init()
                         alloc_stat->mutex = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
                         pthread_mutex_init(alloc_stat->mutex, NULL);
                     #endif
+
+                #ifdef Z3_HASH_ENABLE
+                        alloc_stat->hash_table = z3_hash_init();
+                #else
                         alloc_stat->memblock_list               = NULL;
+                #endif
                         alloc_stat->total_allocated_bytes       = 0;
                         alloc_stat->total_free_bytes            = 0;
                         alloc_stat->maximum_memory_bytes        = 0;
@@ -92,11 +106,31 @@ void alloc_visit_func(void *data_orig, void *data_custom)
         free(head);
 }
 
+void _z3_alloc_show_statistics()
+{
+	TRACE_NOTICE("====== Z3 ALLOC operation statistics =======\r\n");
+	TRACE_NOTICE(".....Total allocated bytes:         %u bytes\r\n", alloc_stat->total_allocated_bytes);
+	TRACE_NOTICE(".....Total free bytes:              %u bytes\r\n", alloc_stat->total_free_bytes);
+	TRACE_NOTICE(".....Maximum occupied memory:       %u bytes\r\n", alloc_stat->maximum_memory_bytes);
+	TRACE_NOTICE(".....Total allocated times:         %u\r\n", alloc_stat->total_allocated_times);
+	TRACE_NOTICE(".....Total free times:              %u\r\n", alloc_stat->total_free_times);
+	TRACE_NOTICE("============================================\r\n");	
+}
+
 void _z3_alloc_uninit()
 {
         if (alloc_stat == NULL)
                 return;
 
+#ifdef Z3_HASH_ENABLE
+        if (z3_hash_amount(alloc_stat->hash_table) > 0)
+        {
+                TRACE_ERROR("There are still following memblocks weren't free!\r\n");
+
+                z3_hash_foreach(alloc_stat->hash_table, alloc_visit_func, NULL);
+                z3_hash_uninit(alloc_stat->hash_table);
+        }
+#else
         if (alloc_stat->memblock_list && z3_list_next(alloc_stat->memblock_list) != NULL)
         {
                 TRACE_ERROR("There are still following memblocks weren't free!\r\n");
@@ -104,13 +138,9 @@ void _z3_alloc_uninit()
                 z3_list_foreach(alloc_stat->memblock_list, alloc_visit_func, NULL);
                 z3_list_free(alloc_stat->memblock_list);
         }
+#endif
 
-        TRACE_INFO("Z3 ALLOC operation statistics:\r\n");
-        TRACE_INFO(".....Total allocated bytes:      %u bytes\r\n", alloc_stat->total_allocated_bytes);
-        TRACE_INFO(".....Total free bytes:           %u bytes\r\n", alloc_stat->total_free_bytes);
-        TRACE_INFO(".....Maximum occupied memory:    %u bytes\r\n", alloc_stat->maximum_memory_bytes);
-        TRACE_INFO(".....Total allocated times:      %u\r\n", alloc_stat->total_allocated_times);
-        TRACE_INFO(".....Total free times:           %u\r\n", alloc_stat->total_free_times);
+		_z3_alloc_show_statistics();
 
 #if defined(WIN32) || defined(_WIN32)
         CloseHandle(alloc_stat->mutex);
@@ -172,15 +202,20 @@ void* _z3_malloc(size_t size, char *filename, unsigned int line)
 
                 if (alloc_stat != NULL)
                 {
-                    #if defined(WIN32) || defined(_WIN32)
+                #if defined(WIN32) || defined(_WIN32)
                         result = WaitForSingleObject(alloc_stat->mutex, INFINITE);
                         assert(result == WAIT_OBJECT_0);
-                    #else
-                        result = pthread_mutex_lock(alloc_stat->mutex);
-                        assert(result == 0);
-                    #endif                        
+                #else
+                        //result = pthread_mutex_lock(alloc_stat->mutex);
+                        //assert(result == 0);
+                        z3_pthread_func(pthread_mutex_lock, alloc_stat->mutex, result);
+                #endif                        
                         
-                        alloc_stat->memblock_list = z3_list_add_tail(alloc_stat->memblock_list, head);
+                #ifdef Z3_HASH_ENABLE
+                        z3_hash_insert(alloc_stat->hash_table, head);
+                #else
+                        alloc_stat->memblock_list = z3_list_add_head(alloc_stat->memblock_list, head);
+                #endif
                         
                         alloc_stat->total_allocated_times++;
                         alloc_stat->total_allocated_bytes += head->length;
@@ -189,15 +224,19 @@ void* _z3_malloc(size_t size, char *filename, unsigned int line)
                         if (bytes > alloc_stat->maximum_memory_bytes)
                                 alloc_stat->maximum_memory_bytes = bytes;
 
-                    #if defined(WIN32) || defined(_WIN32)
+                #if defined(WIN32) || defined(_WIN32)
                         ReleaseMutex(alloc_stat->mutex);
-                    #else
-                        pthread_mutex_unlock(alloc_stat->mutex);
-                    #endif
+                #else
+                        //pthread_mutex_unlock(alloc_stat->mutex);
+                        z3_pthread_func(pthread_mutex_unlock, alloc_stat->mutex, result);
+                #endif
                 }
 
-                //TRACE_DETAIL("Alloc(malloc) 0x%p, %s:%u times: %u\r\n",
-                //        head+1, head->filename, head->length, alloc_stat->total_allocated_times);
+        #ifndef Z3_HASH_ENABLE
+                TRACE_DETAIL("Alloc(malloc) 0x%p, %s:%u times: %u, list_num: %u\r\n",
+                        head+1, head->filename, head->length, alloc_stat->total_allocated_times, 
+                        alloc_stat->memblock_list->list_num);
+        #endif
 
                 return head + 1;
         }
@@ -206,7 +245,7 @@ void* _z3_malloc(size_t size, char *filename, unsigned int line)
 #endif
 }
 
-void*   _z3_calloc(size_t num, size_t size, char *filename, unsigned int line)
+void* _z3_calloc(size_t num, size_t size, char *filename, unsigned int line)
 {
 #if !defined(Z3_MEM_DEBUG) && !defined(_DEBUG) && !defined(DEBUG)
         return calloc(num, size);
@@ -261,11 +300,16 @@ void*   _z3_calloc(size_t num, size_t size, char *filename, unsigned int line)
                         result = WaitForSingleObject(alloc_stat->mutex, INFINITE);
                         assert(result == WAIT_OBJECT_0);
                     #else
-                        result = pthread_mutex_lock(alloc_stat->mutex);
-                        assert(result == 0);                    
+                        //result = pthread_mutex_lock(alloc_stat->mutex);
+                        //assert(result == 0);
+                        z3_pthread_func(pthread_mutex_lock, alloc_stat->mutex, result);
                     #endif
                     
-                        alloc_stat->memblock_list = z3_list_add_tail(alloc_stat->memblock_list, head);
+                #ifdef Z3_HASH_ENABLE
+                        z3_hash_insert(alloc_stat->hash_table, head);
+                #else
+                        alloc_stat->memblock_list = z3_list_add_head(alloc_stat->memblock_list, head);
+                #endif
 
                         alloc_stat->total_allocated_times++;
                         alloc_stat->total_allocated_bytes += head->length;
@@ -277,13 +321,17 @@ void*   _z3_calloc(size_t num, size_t size, char *filename, unsigned int line)
                     #if defined(WIN32) || defined(_WIN32)     
                         ReleaseMutex(alloc_stat->mutex);
                     #else
-                        result = pthread_mutex_unlock(alloc_stat->mutex);
-                        assert(result == 0);
+                        //result = pthread_mutex_unlock(alloc_stat->mutex);
+                        //assert(result == 0);
+                        z3_pthread_func(pthread_mutex_unlock, alloc_stat->mutex, result);
                     #endif
                 }
 
-                //TRACE_DETAIL("Alloc(calloc) 0x%p, %s:%u times: %u\r\n", 
-                //        head+1, head->filename, head->length, alloc_stat->total_allocated_times);
+        #ifndef Z3_HASH_ENABLE
+                TRACE_DETAIL("Alloc(calloc) 0x%p, %s:%u times: %u, list num: %u\r\n", 
+                        head+1, head->filename, head->length, alloc_stat->total_allocated_times,
+                        alloc_stat->memblock_list->list_num);
+        #endif
 
                 return head + 1;
         }
@@ -328,12 +376,16 @@ void* _z3_realloc(void *ptr, size_t size, char *filename, unsigned int line)
                 result = WaitForSingleObject(alloc_stat->mutex, INFINITE);
                 assert(result == WAIT_OBJECT_0);
             #else
-                result = pthread_mutex_lock(alloc_stat->mutex);
-                assert(result == 0);                    
+                //result = pthread_mutex_lock(alloc_stat->mutex);
+                //assert(result == 0);        
+                z3_pthread_func(pthread_mutex_lock, alloc_stat->mutex, result);
             #endif               
             
-                if (alloc_stat->memblock_list != NULL)
-                        alloc_stat->memblock_list = z3_list_remove(alloc_stat->memblock_list, head);
+        #ifdef Z3_HASH_ENABLE
+                z3_hash_remove(alloc_stat->hash_table, head);
+        #else
+                alloc_stat->memblock_list = z3_list_remove(alloc_stat->memblock_list, head);
+        #endif
 
                 alloc_stat->total_free_bytes += head->length;
                 alloc_stat->total_free_times++;
@@ -341,8 +393,9 @@ void* _z3_realloc(void *ptr, size_t size, char *filename, unsigned int line)
             #if defined(WIN32) || defined(_WIN32)  
                 ReleaseMutex(alloc_stat->mutex);
             #else
-                result = pthread_mutex_unlock(alloc_stat->mutex);
-                assert(result == 0);
+                //result = pthread_mutex_unlock(alloc_stat->mutex);
+                //assert(result == 0);
+                z3_pthread_func(pthread_mutex_unlock, alloc_stat->mutex, result);
             #endif            
         }
 
@@ -386,11 +439,16 @@ void* _z3_realloc(void *ptr, size_t size, char *filename, unsigned int line)
                         result = WaitForSingleObject(alloc_stat->mutex, INFINITE);
                         assert(result == WAIT_OBJECT_0);
                     #else
-                        result = pthread_mutex_lock(alloc_stat->mutex);
-                        assert(result == 0);                    
+                        //result = pthread_mutex_lock(alloc_stat->mutex);
+                        //assert(result == 0);
+                        z3_pthread_func(pthread_mutex_lock, alloc_stat->mutex, result);
                     #endif
 			
-		        alloc_stat->memblock_list = z3_list_add_tail(alloc_stat->memblock_list, head);	
+                #ifdef Z3_HASH_ENABLE
+                        z3_hash_insert(alloc_stat->hash_table, head);
+                #else
+		        alloc_stat->memblock_list = z3_list_add_head(alloc_stat->memblock_list, head);
+                #endif
                         alloc_stat->total_allocated_times++;
                         alloc_stat->total_allocated_bytes += head->length;
                         
@@ -401,12 +459,17 @@ void* _z3_realloc(void *ptr, size_t size, char *filename, unsigned int line)
                     #if defined(WIN32) || defined(_WIN32)     
                         ReleaseMutex(alloc_stat->mutex);
                     #else
-                        result = pthread_mutex_unlock(alloc_stat->mutex);
-                        assert(result == 0);
+                        //result = pthread_mutex_unlock(alloc_stat->mutex);
+                        //assert(result == 0);
+                        z3_pthread_func(pthread_mutex_unlock, alloc_stat->mutex, result);
                     #endif
                 }
 
-                TRACE_DETAIL("Realloc(realloc) 0x%p, %s:%u\r\n", head+1, head->filename, head->length);
+        #ifndef Z3_HASH_ENABLE
+                TRACE_DETAIL("Realloc(realloc) 0x%p, %s:%u times: %u, list num: %u \r\n",
+                        head+1, head->filename, head->length, alloc_stat->total_allocated_times,
+                        alloc_stat->memblock_list->list_num);
+        #endif
 
                 return head + 1;
         }
@@ -450,12 +513,16 @@ void _z3_free(void *memblock)
                 result = WaitForSingleObject(alloc_stat->mutex, INFINITE);
                 assert(result == WAIT_OBJECT_0);
             #else
-                result = pthread_mutex_lock(alloc_stat->mutex);
-                assert(result == 0);                    
+                //result = pthread_mutex_lock(alloc_stat->mutex);
+                //assert(result == 0);
+                z3_pthread_func(pthread_mutex_lock, alloc_stat->mutex, result);
             #endif               
             
-                if (alloc_stat->memblock_list != NULL)
-                        alloc_stat->memblock_list = z3_list_remove(alloc_stat->memblock_list, head);
+        #ifdef Z3_HASH_ENABLE
+                z3_hash_remove(alloc_stat->hash_table, head);
+        #else
+                alloc_stat->memblock_list = z3_list_remove(alloc_stat->memblock_list, head);
+        #endif
 
                 alloc_stat->total_free_bytes += head->length;
                 alloc_stat->total_free_times++;
@@ -463,13 +530,17 @@ void _z3_free(void *memblock)
             #if defined(WIN32) || defined(_WIN32)  
                 ReleaseMutex(alloc_stat->mutex);
             #else
-                result = pthread_mutex_unlock(alloc_stat->mutex);
-                assert(result == 0);
+                //result = pthread_mutex_unlock(alloc_stat->mutex);
+                //assert(result == 0);
+                z3_pthread_func(pthread_mutex_unlock, alloc_stat->mutex, result);
             #endif            
         }
 
-        //TRACE_DETAIL("Free 0x%p, %s:%u times:%u\r\n", 
-        //        memblock, head->filename, head->length, alloc_stat->total_free_times);
+#ifndef Z3_HASH_ENABLE
+        TRACE_DETAIL("Free 0x%p, %s:%u times:%u, list_num: %u\r\n", 
+                memblock, head->filename, head->length, alloc_stat->total_free_times,
+                alloc_stat->memblock_list ? alloc_stat->memblock_list->list_num : 0);
+#endif
 
         free(head);
 #endif

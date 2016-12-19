@@ -12,7 +12,7 @@ MAKE	= make
 RANLIB  = $(CROSS_COMPILE)ranlib
 
 PRJ_CFLAGS	+= ${CFLAGS}
-PRJ_CFLAGS	+= -g -pthread -Wall -fno-inline -fstack-protector -fPIC -DZ3_MEM_DEBUG
+PRJ_CFLAGS	+= -g -pthread -Wall -fno-inline -fstack-protector -fPIC -DZ3_MEM_DEBUG -DDEBUG -DZ3_HASH_ENABLE
 
 PRJ_LDFLAGS	+= -g -pthread -fPIC
 
@@ -51,6 +51,7 @@ install:
 	cp -f ./z3_alloc.h $(INSTALL_DIR)/include/z3_util
 	cp -f ./z3_trace.h $(INSTALL_DIR)/include/z3_util
 	cp -f ./z3_list.h $(INSTALL_DIR)/include/z3_util
+	cp -f ./z3_hash.h $(INSTALL_DIR)/include/z3_util
 
 	test -d $(INSTALL_DIR)/lib || mkdir -p $(INSTALL_DIR)/lib
 	cp -f $(TARGET) $(INSTALL_DIR)/lib

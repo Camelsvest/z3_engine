@@ -10,7 +10,7 @@ MAKE	= make
 RANLIB  = $(CROSS_COMPILE)ranlib
 
 PRJ_CFLAGS	+= ${CFLAGS}
-PRJ_CFLAGS	+= -g -pthread -Wall -fno-inline -fstack-protector -fPIC -DZ3_MEM_DEBUG
+PRJ_CFLAGS	+= -g -pthread -Wall -fno-inline -fstack-protector -fPIC -DZ3_MEM_DEBUG -DDEBUG
 
 PRJ_LDFLAGS	+= -g -pthread -fPIC
 
@@ -52,10 +52,10 @@ clean:
 
 install:
 	test -d $(INSTALL_DIR)/bin || mkdir -p $(INSTALL_DIR)/bin
-	cp -f ./test $(INSTALL_DIR)/bin/z3_test
-	cp -f ./sample.txt  $(INSTALL_DIR)/bin/sample.txt
+	cp -f ./$(TARGET) $(INSTALL_DIR)/bin/$(TARGET)
+	cp -f ./sample.txt $(INSTALL_DIR)/bin/sample.txt
 
 uninstall:
-	rm -rf $(INSTALL_DIR)/bin/z3_test
+	rm -rf $(INSTALL_DIR)/bin/$(TARGET)
 	rm -rf $(INSTALL_DIR)/bin/sample.txt
 

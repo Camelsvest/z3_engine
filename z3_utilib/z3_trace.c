@@ -20,6 +20,7 @@
 
 #include "z3_trace.h"
 #include "z3_list.h"
+#include "z3_alloc.h"
 
 #define MAX_DUMP_SIZE   512
 #define MAX_LINE_LENGTH 1024
@@ -91,8 +92,9 @@ static int shipping(const char *string, int size_with_null)
 #else
         int     error;
 
-        error = pthread_mutex_lock(G_TRUCK_INFO->msg_mutex);
-        assert(error == 0);
+        //error = pthread_mutex_lock(G_TRUCK_INFO->msg_mutex);
+        //assert(error == 0);
+        z3_pthread_func(pthread_mutex_lock, G_TRUCK_INFO->msg_mutex, error);
 #endif
 
 
@@ -109,11 +111,13 @@ static int shipping(const char *string, int size_with_null)
         ReleaseMutex(G_TRUCK_INFO->msg_mutex);
         SetEvent(G_TRUCK_INFO->msg_event);
 #else
-	error = pthread_cond_signal(G_TRUCK_INFO->msg_event);
-        assert(error == 0);
+	//error = pthread_cond_signal(G_TRUCK_INFO->msg_event);
+        //assert(error == 0);
+        z3_pthread_func(pthread_cond_signal, G_TRUCK_INFO->msg_event, error);
 
-        error = pthread_mutex_unlock(G_TRUCK_INFO->msg_mutex);
-        assert(error == 0);
+        //error = pthread_mutex_unlock(G_TRUCK_INFO->msg_mutex);
+        //assert(error == 0);
+        z3_pthread_func(pthread_mutex_unlock, G_TRUCK_INFO->msg_mutex, error);
 #endif
 
         return size_with_null;
@@ -172,8 +176,6 @@ static void* thread_func(void *args)
         truck_t         *truck_info;
         BOOL            quit;
 	int		succeed;
-        struct timeval  now;
-        struct timespec timeout;
         
         truck_info = (truck_t *)args;
         assert(truck_info);
@@ -181,31 +183,10 @@ static void* thread_func(void *args)
         quit = FALSE;
         while (!quit)
         {
-                /*
-                gettimeofday(&now, NULL);
-                timeout.tv_nsec = now.tv_usec * 1000 + 10000;   // 10 ms
-                timeout.tv_sec = now.tv_sec;
-                if (timeout.tv_nsec > 1000000000)
-                {
-                        timeout.tv_sec += 1;
-                        timeout.tv_nsec -= 1000000000;
-                }
-                */
-                
-		succeed = pthread_mutex_lock(truck_info->msg_mutex);
-		assert(succeed == 0);
+                z3_pthread_func(pthread_mutex_lock, truck_info->msg_mutex, succeed);
+		//succeed = pthread_mutex_lock(truck_info->msg_mutex);
+		//assert(succeed == 0);
 
-                /*
-                succeed = pthread_cond_timedwait(truck_info->msg_event, truck_info->msg_mutex, &timeout);
-                if (succeed != 0)
-                {
-			succeed = pthread_mutex_unlock(truck_info->msg_mutex);
-			assert(succeed == 0);
-
-                        usleep(1000); // 1 ms
-                        continue;
-                }
-                */
                 succeed = pthread_cond_wait(truck_info->msg_event, truck_info->msg_mutex);
                 assert(succeed == 0);
 
@@ -215,8 +196,9 @@ static void* thread_func(void *args)
                 z3_list_free(truck_info->string_list);
                 truck_info->string_list = NULL;
                 
-                succeed = pthread_mutex_unlock(truck_info->msg_mutex);
-                assert(succeed == 0);                
+                //succeed = pthread_mutex_unlock(truck_info->msg_mutex);
+                //assert(succeed == 0);
+                z3_pthread_func(pthread_mutex_unlock, truck_info->msg_mutex, succeed);
         }
 
         succeed = pthread_mutex_lock(truck_info->msg_mutex);
@@ -226,8 +208,9 @@ static void* thread_func(void *args)
         z3_list_free(truck_info->string_list);
         truck_info->string_list = NULL;
 
-        succeed = pthread_mutex_unlock(truck_info->msg_mutex);
-        assert(succeed == 0);
+        //succeed = pthread_mutex_unlock(truck_info->msg_mutex);
+        //assert(succeed == 0);
+        z3_pthread_func(pthread_mutex_unlock, truck_info->msg_mutex, succeed);
 
         return 0;        
 }
@@ -319,31 +302,34 @@ static void stop_truck(void)
 {
         int             error;
         void            *ret;
-        struct timeval  now;
-        struct timespec timeout;        
 
         assert(G_TRUCK_INFO);
 
-        error = pthread_mutex_lock(G_TRUCK_INFO->msg_mutex);
-        assert(error == 0);
+        //error = pthread_mutex_lock(G_TRUCK_INFO->msg_mutex);
+        //assert(error == 0);
+        z3_pthread_func(pthread_mutex_lock, G_TRUCK_INFO->msg_mutex, error);
 
         G_TRUCK_INFO->quit = TRUE;
 
-        error = pthread_cond_signal(G_TRUCK_INFO->msg_event);
-        assert(error == 0);
+        //error = pthread_cond_signal(G_TRUCK_INFO->msg_event);
+        //assert(error == 0);
+        z3_pthread_func(pthread_cond_signal, G_TRUCK_INFO->msg_event, error);
         
-        error = pthread_mutex_unlock(G_TRUCK_INFO->msg_mutex);
-        assert(error == 0);
+        //error = pthread_mutex_unlock(G_TRUCK_INFO->msg_mutex);
+        //assert(error == 0);
+        z3_pthread_func(pthread_mutex_unlock, G_TRUCK_INFO->msg_mutex, error);
         
         error = pthread_join(G_TRUCK_INFO->thread, &ret);
-        //assert(error == 0);
-
-        error = pthread_mutex_destroy(G_TRUCK_INFO->msg_mutex);
         assert(error == 0);
+
+        //error = pthread_mutex_destroy(G_TRUCK_INFO->msg_mutex);
+        //assert(error == 0);
+        z3_pthread_func(pthread_mutex_destroy, G_TRUCK_INFO->msg_mutex, error);
         free(G_TRUCK_INFO->msg_mutex);
 
-        error = pthread_cond_destroy(G_TRUCK_INFO->msg_event);
-        assert(error == 0);
+        //error = pthread_cond_destroy(G_TRUCK_INFO->msg_event);
+        //assert(error == 0);
+        z3_pthread_func(pthread_cond_destroy, G_TRUCK_INFO->msg_event, error);
         free(G_TRUCK_INFO->msg_event);
 
         z3_list_free(G_TRUCK_INFO->string_list);
@@ -496,8 +482,9 @@ static long get_trace_level()
         result = WaitForSingleObject(G_TRACE_INFO->mutex, INFINITE);
         assert(result == WAIT_OBJECT_0);
 #else
-        result = pthread_mutex_lock(G_TRACE_INFO->mutex);
-        assert(result == 0);
+        //result = pthread_mutex_lock(G_TRACE_INFO->mutex);
+        //assert(result == 0);
+        z3_pthread_func(pthread_mutex_lock, G_TRACE_INFO->mutex, result);
 #endif
 
         current = G_TRACE_INFO->level;
@@ -505,8 +492,9 @@ static long get_trace_level()
 #if defined(WIN32) || defined(_WIN32)
         ReleaseMutex(G_TRACE_INFO->mutex);
 #else
-        result = pthread_mutex_unlock(G_TRACE_INFO->mutex);
-        assert(result == 0);
+        //result = pthread_mutex_unlock(G_TRACE_INFO->mutex);
+        //assert(result == 0);
+        z3_pthread_func(pthread_mutex_unlock, G_TRACE_INFO->mutex, result);
 #endif
 
         return current;

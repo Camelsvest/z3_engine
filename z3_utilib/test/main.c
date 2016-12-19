@@ -5,9 +5,10 @@
 
 #include "z3_alloc.h"
 #include "z3_trace.h"
+#include "z3_list.h"
 
 #define MAX_BUF_SIZE	256
-#define MAX_THREADS	20
+#define MAX_THREADS	5
 
 void* thread_func(void *args)
 {
@@ -42,8 +43,8 @@ void* thread_func(void *args)
 		TRACE_INFO("%s", dupbuf);
 		z3_free(dupbuf);
 
-		//++index;
-		//buf = (char *)z3_realloc(buf, buf_size + index);
+		++index;
+		buf = (char *)z3_realloc(buf, buf_size + index);
 		read_bytes = getline(&buf, &buf_size, fp);
 	}
 
@@ -56,13 +57,47 @@ end2:
 	return 0;
 }
 
-int main(int argc, char *argv[])
+int test_list()
+{
+        z3_list_t *list;
+        int index;
+
+        list = NULL;
+        for (index = 0; index < 10000; index++)
+        {
+                if (index % 2)
+                {
+                        list = z3_list_add_head(list, (void *)index);
+                }
+                else
+                {
+                        list = z3_list_add_tail(list, (void *)index);
+                }
+
+                printf("Add index %d, list num:%u\r\n", index, list->list_num);
+        }
+
+        printf("Add finished \r\n");
+
+        for (index = 10000; index >= 0; --index)
+        {
+                printf("Remove index %d, list num:%u\r\n", index, list->list_num);
+
+                list = z3_list_remove_all(list, (void *)index);
+        }
+
+        assert(list == NULL);
+
+        return 0;
+}
+
+int test_trace()
 {
 	pthread_t	thread_ids[MAX_THREADS];
 	int		error, index = 0;
 	void		*retval = NULL;
 
-	TRACE_INIT(LOG_DEBUG);
+	TRACE_INIT(LOG_DETAIL);
 	z3_alloc_init();
 
 	while (index < MAX_THREADS)
@@ -73,7 +108,7 @@ int main(int argc, char *argv[])
 		++index;
 	}
 
-	getchar();
+	//getchar();
 
 	index = 0;
 	while (index < MAX_THREADS)
@@ -87,5 +122,13 @@ int main(int argc, char *argv[])
 	z3_alloc_uninit();
 	TRACE_UNINIT();
 
+        return 0;
+}
+
+int main(int argc, char *argv[])
+{
+
+        //test_list();
+        test_trace();
 	return 0;
 }
