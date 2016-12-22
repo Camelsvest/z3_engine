@@ -1,16 +1,25 @@
 #ifndef _Z3_RTP_HPP_
 #define _Z3_RTP_HPP_
 
+#if defined(WIN32) || defined(_WIN32)
+#define __LITTLE_ENDIAN 1234
+#define __BIG_ENDIAN 4321
+#define _BYTE_ORDER __LITTLE_ENDIAN
+#else
+#define _BSD_SOURCE
+#include <endian.h>
+#endif
+
 typedef struct _rtp_hdr
 {
-#if _BYTE_ORDER == _LITTLE_ENDIAN
+#if _BYTE_ORDER == __LITTLE_ENDIAN
         unsigned short  csrc_count      :4,    /* 有贡献源个数 */
                         extension       :1, 
                         padding         :1,
                         version         :2,
                         payload_type    :7,  /* 载荷类型 */
                         marker          :1;
-#elif _BYTE_ORDER == _BIG_ENDIAN
+#elif _BYTE_ORDER == __BIG_ENDIAN
         unsigned short  version         :2,
                         padding         :1, 
                         extension       :1,
