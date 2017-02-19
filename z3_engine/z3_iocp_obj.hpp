@@ -10,13 +10,22 @@ namespace Z3 {
         {
         public:
                 IOCPObj(HANDLE hIOCP, uint32_t nObjID);
+                
+                int     SocketAsyncConnect(SOCKET hSocket, SOCKADDR_IN *pTarget, uint32_t nMillseconds);
+                int     SocketAsyncTCPRead(SOCKET hSocket, uint32_t nMillseconds, WSABUF *pwsaBuf);
+                int     SocketAsyncTCPWrite(SOCKET hSocket, uint32_t nMillseconds, WSABUF *pwsaBuf);
 
-                LPZ3OVL AllocZ3Ovl(HANDLE hFileHandle, ev_id_t evID, uint32_t millseconds);
-                void    FreeZ3Ovl(LPZ3OVL pOvl);
+                int     SocketAsyncUDPRead(SOCKET hSocket, uint32_t nMillseconds, WSABUF *pwsaBuf, SOCKADDR *pSockAddr, int *pnAddrSize);
+                int     SocketAsyncUDPWrite(SOCKET hSocket, uint32_t nMillseconds, WSABUF *pwsaBuf);
+
+                int     AddEvent(LPZ3_EV_OVL pZ3Ovl, bool bAdd = true);
+                
+                int     AddTimer(uint32_t nTimerID, uint32_t nMillseconds);
+                int     RemoveTimer(uint32_t nTimerID);
 
                 int Start(void);
 
-                virtual int     Run(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes) = 0;
+                virtual int     Run(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes, bool bExpired = false) = 0;
 
         protected:
                 virtual ~IOCPObj();
@@ -25,8 +34,8 @@ namespace Z3 {
                 HANDLE  m_hIOCP;
 
         private:
-                typedef std::list<LPZ3OVL>              Z3OVL_LIST;
-                typedef std::list<LPZ3OVL>::iterator    Z3OVL_LIST_ITERATOR;
+                typedef std::list<LPZ3_EV_OVL>              Z3OVL_LIST;
+                typedef std::list<LPZ3_EV_OVL>::iterator    Z3OVL_LIST_ITERATOR;
 
                 Z3OVL_LIST      m_lstIdle;
         };

@@ -15,6 +15,9 @@ UDPSession::UDPSession(HANDLE hIOCP, uint32_t nObjID)
         , m_pUdpRecvBuf(NULL)
         , m_nUdpRecvBufSize(SOCKET_RECV_BUFSIZE)
 {
+        m_addrFrom = { 0 };
+        m_nAddrFromSize = 0;
+
         m_pUdpRecvBuf = (char *)z3_calloc(1, m_nUdpRecvBufSize);
         assert(m_pUdpRecvBuf);
 
@@ -71,59 +74,32 @@ int UDPSession::Init(uint16_t nPort)
 
 int UDPSession::StartRead(uint32_t nTimeout /*Millseconds*/)
 {
-        BOOL            bOK;
-        LPZ3OVL         pZ3Ovl;
-        DWORD           dwFlags, dwRecvBytes;
         int             nError;
 
-        // pZ3Ovl 内存的删除，由z3_engine负责
-        pZ3Ovl = AllocZ3Ovl((HANDLE)m_hSocket, EV_READ, INFINITE);
-        assert(pZ3Ovl);
+        TRACE_ENTER_FUNCTION;
 
-        // 加入z3_engine 中的PENGDING列表，同时完成超时侦测
-        bOK = ::PostQueuedCompletionStatus(m_hIOCP, 0, GetObjID(), TIMEOUT_OVL_ADDR(pZ3Ovl));
-        if (!bOK)
-        {
-                TRACE_ERROR("Failed to invoke function PostQueuedCompletionStatus in connector object 0x%p, function %s, file %s, line %d\r\n",
-                        this, __FUNCTION__, __FILE__, __LINE__);
+        assert(m_hSocket != INVALID_SOCKET);
+        memset(m_wsaRecvBuf.buf, 0, m_wsaRecvBuf.len);
+        
+        m_nAddrFromSize = sizeof(m_addrFrom);
+        nError = SocketAsyncUDPRead(m_hSocket, nTimeout, &m_wsaRecvBuf, (LPSOCKADDR)&m_addrFrom, &m_nAddrFromSize);
 
-                Z3_CLOSE_SOCKET(m_hSocket);
-                FreeZ3Ovl(pZ3Ovl);
+        TRACE_EXIT_FUNCTION;
 
-                return Z3_SYS_ERROR;
-        }
-
-        dwFlags = 0;
-        nError = ::WSARecvFrom(m_hSocket, &m_wsaRecvBuf, 1, &dwRecvBytes, &dwFlags, (SOCKADDR *)&SOCK_ADDR_FROM_Z3OVL(pZ3Ovl),
-                &SOCK_ADDR_SIZE_FROM_Z3OVL(pZ3Ovl),  ACT_OVL_ADDR(pZ3Ovl), NULL);
-        if  (nError == SOCKET_ERROR)
-        {
-                nError = ::WSAGetLastError();
-                if (nError != WSA_IO_PENDING)
-                {
-                        TRACE_ERROR("Failed to invoke function WSARecvFrom, error code is %d\r\n", nError);
-                        return EWSABASE + nError;
-                }
-        }
-
-        return Z3_EOK;
+        return nError;
 }
 
-int UDPSession::Run(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes)
+int UDPSession::Run(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes, bool bExpired)
 {
         int nError = Z3_EOK;
 
         switch (evID)
         {
         case EV_READ:
-                // 在处理帧之前，先继续“读”，保障性能
-                nError = StartRead(SOCKET_READ_TIMEOUT);
-                assert(nError == 0);
-
-                nError = OnEvRead(nErrorCode, nBytes);
+                nError = OnEvRead(nErrorCode, nBytes, bExpired);
                 break;
         case EV_WRITE:
-                nError = OnEvWrite(nErrorCode, nBytes);
+                nError = OnEvWrite(nErrorCode, nBytes, bExpired);
                 break;
         default:
                 assert(false);
@@ -134,11 +110,17 @@ int UDPSession::Run(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes)
         return nError;
 }
 
-int UDPSession::OnEvRead(uint32_t nErrorCode, uint32_t nBytes)
+int UDPSession::OnEvRead(uint32_t nErrorCode, uint32_t nBytes, bool bExpired)
 {
         ProtoParser     *pParser;
         Msg             *pMsg;
         uint32_t        nError = Z3_EOK;
+
+        if (bExpired)
+        {
+                TRACE_WARN("UDP Session operation \"READ\" expired.\r\n");
+                return Z3_EINTR;
+        }
 
         if (nBytes <= 0)
         {
@@ -151,6 +133,9 @@ int UDPSession::OnEvRead(uint32_t nErrorCode, uint32_t nBytes)
                 return Z3_ERROR;
         }
 
+        // 在处理帧之前，先继续“读”，保障性能
+        nError = StartRead(SOCKET_READ_TIMEOUT);
+        assert(nError == 0);
 
         TRACE_DEBUG("Received UDP message(%lu bytes):\r\n", nBytes);
         TRACE_DUMP(LOG_DETAIL, m_pUdpRecvBuf, nBytes);
@@ -165,8 +150,14 @@ int UDPSession::OnEvRead(uint32_t nErrorCode, uint32_t nBytes)
         return nError;
 }
 
-int UDPSession::OnEvWrite(uint32_t nErrorCode, uint32_t nBytes)
+int UDPSession::OnEvWrite(uint32_t nErrorCode, uint32_t nBytes, bool bExpired)
 {
+        if (bExpired)
+        {
+                TRACE_WARN("UDPSession operation \"WRITE\" expired.\r\n");
+                return Z3_EINTR;
+        }
+
         assert(false);
         return Z3_ERROR;
 }

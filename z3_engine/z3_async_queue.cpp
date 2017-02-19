@@ -27,12 +27,13 @@ AsyncQueue::~AsyncQueue()
 }
 
 
-void AsyncQueue::Push(ev_id_t evID, void *pData)
+void AsyncQueue::Push(ev_id_t evID, bool bTimeout, void *pData)
 {
         DWORD   dwResult;
         Z3EV    ev;
 
         ev.id = evID;
+        ev.timeout = bTimeout;
         ev.data = pData;
 
         dwResult = ::WaitForSingleObject(m_hMutex, INFINITE);
@@ -74,18 +75,18 @@ bool AsyncQueue::Signal(bool bOK)
                 return (::ResetEvent(m_hEvent) == TRUE);
 }
 
-void* AsyncQueue::WaitForEV(ev_id_t &evID, uint32_t nTimeout/* millseconds*/)
+bool AsyncQueue::WaitForEV(Z3EV &ev, uint32_t nTimeout/* millseconds*/)
 {
         DWORD   dwResult;
         HANDLE  Handles[2];
-        Z3EV    ev;
-        void    *pData = NULL;
+        bool    bOk;
 
         assert(m_hMutex != NULL);
         assert(m_hEvent != NULL);
 
         Handles[0] = m_hMutex;
         Handles[1] = m_hEvent;
+        bOk = false;
 
         dwResult = ::WaitForMultipleObjects(2, Handles, TRUE, nTimeout);        
         if (dwResult == WAIT_OBJECT_0)
@@ -95,17 +96,14 @@ void* AsyncQueue::WaitForEV(ev_id_t &evID, uint32_t nTimeout/* millseconds*/)
                         ev = m_Queue.front();
                         m_Queue.pop();
 
-                        evID = ev.id;
-                        pData = ev.data;
+                        bOk = true;
                 }
         
                 if (m_Queue.empty())
                         ::ResetEvent(m_hEvent);
 
                 ::ReleaseMutex(m_hMutex);
-                                
-                return pData;
         }
 
-        return NULL;
+        return bOk;
 }

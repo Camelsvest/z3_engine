@@ -110,5 +110,8 @@
     <ClCompile Include="z3_udp_session.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="z3_ev.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

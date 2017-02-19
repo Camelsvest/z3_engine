@@ -18,14 +18,13 @@ namespace Z3 {
                 inline char*    GetRecvBuffer() { return m_pUdpRecvBuf; }
                 inline uint32_t GetRecvBufSize() { return m_nUdpRecvBufSize; }
 
-                virtual int     Run(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes);
+                virtual int     Run(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes, bool bExpired);
 
         protected:
                 virtual ~UDPSession();
 
-
-                virtual int     OnEvRead(uint32_t nErrorCode, uint32_t nBytes);
-                virtual int     OnEvWrite(uint32_t nErrorCode, uint32_t nBytes);
+                virtual int     OnEvRead(uint32_t nErrorCode, uint32_t nBytes, bool bExpired);
+                virtual int     OnEvWrite(uint32_t nErrorCode, uint32_t nBytes, bool bExpired);
 
                 virtual ProtoParser*    GetProtoParser() = 0;
                 virtual int             Dispatch(Msg *pMsg, void *pData) = 0;
@@ -34,6 +33,9 @@ namespace Z3 {
                 SOCKET          m_hSocket;
                 uint16_t        m_nPort;
                 HANDLE          m_hIOCP;
+
+                SOCKADDR_IN     m_addrFrom;
+                int             m_nAddrFromSize;
                 
                 char            *m_pUdpRecvBuf;
                 uint32_t        m_nUdpRecvBufSize;

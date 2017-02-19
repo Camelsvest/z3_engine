@@ -9,11 +9,11 @@ namespace Z3 {
                 AsyncQueue();
                 virtual ~AsyncQueue();
 
-                void    Push(ev_id_t evID, void *pData);
+                void    Push(ev_id_t evID, bool bTimeout, void *pData);
                 void*   Pop(ev_id_t &evID);
 
                 bool    Signal(bool bOK = true);
-                void*   WaitForEV(ev_id_t &evID, uint32_t nTimeout = 20 /* millseconds*/);
+                bool    WaitForEV(Z3EV &ev, uint32_t nTimeout = INFINITE /* millseconds*/);
 
         protected:
 

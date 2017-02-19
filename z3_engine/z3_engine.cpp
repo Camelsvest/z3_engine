@@ -21,6 +21,7 @@ Engine::Engine(uint32_t nObjID)
 Engine::~Engine()
 {
         assert(m_hIOCP == NULL);
+        
         assert(m_lstPendingOvl.empty());
 }
 
@@ -43,7 +44,7 @@ void Engine::RunOnce()
         BOOL            bOK;
         DWORD           dwBytes, dwCompletionKey, dwTimeout;
         LPOVERLAPPED    pOvl;
-        LPZ3OVL         pZ3Ovl, pTimeoutOvl;
+        LPZ3_EV_OVL     pZ3Ovl; // wait whether it expires
         __int64         interval;  
         struct __timeb64 now, latest;
 
@@ -51,13 +52,13 @@ void Engine::RunOnce()
 
         if (m_lstPendingOvl.empty())
         {
-                pTimeoutOvl = NULL;
+                pZ3Ovl = NULL;
                 dwTimeout = DEFAULT_IOCP_TIMEOUT; // millseconds
         }
         else
         {
-                pTimeoutOvl = *m_lstPendingOvl.begin();
-                latest = pTimeoutOvl->timeout;   // current time
+                pZ3Ovl = *m_lstPendingOvl.begin();
+                latest = pZ3Ovl->timeout;   // current time
 
                 _ftime64_s(&now);
                 
@@ -65,7 +66,7 @@ void Engine::RunOnce()
                 if (interval >= DEFAULT_IOCP_TIMEOUT)
                 {
                         dwTimeout = DEFAULT_IOCP_TIMEOUT;
-                        pTimeoutOvl = NULL;
+                        pZ3Ovl = NULL;
                 }
                 else
                 {
@@ -83,30 +84,31 @@ void Engine::RunOnce()
 
         if (pOvl)
         {
-                if (GET_EV_ID(pOvl) == EV_TIMEOUT)
+                switch (GET_EV_ID(pOvl))
                 {
-                        pZ3Ovl = Z3OVL_ADDR_FROM_TIMEOUTOVL(pOvl);                        
-                        AddIntoPendingList(pZ3Ovl);
-
-                        // Since now pZ3Ovl->timeout_ovl shall not be used
-                }
-                else
-                {
-                        pZ3Ovl = Z3OVL_ADDR_FROM_ACTOVL(pOvl);
-
-                        // remove from pending list, then timeout shall be invalid
-                        // activate event
-
-                        RemoveFromPendingList(pZ3Ovl);
-                        Dispatch(GET_EV_ID(pOvl), pZ3Ovl);
+                case EV_OP_ADD:
+                        AddIntoPendingList((LPZ3_EV_OVL)GET_EV_DATA(pOvl));
+                        z3_free((LPZ3_EV_OVL)pOvl);
+                        break;
+                case EV_OP_REMOVE:
+                        RemoveFromPendingList((LPZ3_EV_OVL)GET_EV_DATA(pOvl));
+                        z3_free((LPZ3_EV_OVL)pOvl);
+                        break;
+                default:
+                        RemoveFromPendingList((LPZ3_EV_OVL)pOvl);
+                        Dispatch(GET_EV_ID(pOvl), (LPZ3_EV_OVL)pOvl, false);
+                        break;
                 }
         }
-        else if (pTimeoutOvl)
+        else if (pZ3Ovl)
         {
                 assert(!bOK); // check point ?
-                bOK = ::CancelIoEx(pTimeoutOvl->file_handle, ACT_OVL_ADDR(pTimeoutOvl));
-                if (!bOK)
-                        TRACE_ERROR("ErrorCode of CancelIoEx in %s:%d, : %lu\r\n", __FILE__, __LINE__, ::GetLastError());
+
+                Dispatch(GET_EV_ID(pZ3Ovl), pZ3Ovl, true);
+                //bOK = ::CancelIoEx(pTimeoutOvl->file_handle, ACT_OVL_ADDR(pTimeoutOvl));
+                //if (!bOK)
+                //        TRACE_ERROR("ErrorCode of CancelIoEx in %s:%d, : %lu\r\n", __FILE__, __LINE__, ::GetLastError());
+
         }
 
         /*TRACE_EXIT_FUNCTION;*/
@@ -116,8 +118,7 @@ void Engine::RunOnce()
 
 void Engine::OnThreadStop(void)
 {
-        LPZ3OVL pZ3Ovl;
-        IOCPObj *pObj;
+        LPZ3_EV_OVL pZ3Ovl;
         ev_id_t evID;
         void    *pData;
         
@@ -129,29 +130,32 @@ void Engine::OnThreadStop(void)
                 pZ3Ovl = m_lstPendingOvl.front();
                 m_lstPendingOvl.pop_front();
 
-                pObj = static_cast<IOCPObj *>(pZ3Ovl->data);
-
-                pObj->Lock();
-                pObj->FreeZ3Ovl(pZ3Ovl);
-                pObj->Unlock();
+                switch (GET_EV_ID(pZ3Ovl))
+                {
+                case EV_OP_ADD:
+                case EV_OP_REMOVE:
+                        FreeZ3Ovl((LPZ3_EV_OVL)GET_EV_DATA(pZ3Ovl));
+                        FreeZ3Ovl(pZ3Ovl);
+                        break;
+                default:
+                        FreeZ3Ovl(pZ3Ovl);
+                        break;
+                }
         }
 
         pData = m_Queue.Pop(evID);
         while (pData)
         {
-                pZ3Ovl = static_cast<LPZ3OVL>(pData);
-                pObj = static_cast<IOCPObj *>(pZ3Ovl->data);
-                pObj->Lock();
-                pObj->FreeZ3Ovl(pZ3Ovl);
-                pObj->Unlock();
-
+                pZ3Ovl = static_cast<LPZ3_EV_OVL>(pData);              
+                FreeZ3Ovl(pZ3Ovl);
+                
                 pData = m_Queue.Pop(evID);
         }
 
         Thread::OnThreadStop();
 }
 
-void Engine::AddIntoPendingList(LPZ3OVL pOvl)
+void Engine::AddIntoPendingList(LPZ3_EV_OVL pOvl)
 {
         Z3OVL_LIST_ITERATOR itera;
         bool bAdded = false;
@@ -173,7 +177,7 @@ void Engine::AddIntoPendingList(LPZ3OVL pOvl)
         return;
 }
 
-void Engine::RemoveFromPendingList(LPZ3OVL pOvl)
+void Engine::RemoveFromPendingList(LPZ3_EV_OVL pOvl)
 {
         Z3OVL_LIST_ITERATOR itera;
 
@@ -186,11 +190,35 @@ void Engine::RemoveFromPendingList(LPZ3OVL pOvl)
         return;
 }
 
-bool Engine::Dispatch(ev_id_t evID, LPZ3OVL pZ3Ovl)
+void Engine::RemoveFromPendingList(uint32_t handle)
 {
+        LPZ3_EV_OVL pZ3Ovl;
 
+        Z3OVL_LIST_ITERATOR itera;
+
+        for (itera = m_lstPendingOvl.begin(); itera != m_lstPendingOvl.end(); itera++)
+        {
+                pZ3Ovl = *itera;
+                if (pZ3Ovl->ev_id == EV_TIMEOUT)
+                {
+                        if (pZ3Ovl->handle.timer_id == handle)
+                                itera = m_lstPendingOvl.erase(itera);
+                }
+                else
+                {
+                        if (pZ3Ovl->handle.file_handle == (HANDLE)handle)
+                                itera = m_lstPendingOvl.erase(itera);
+                }
+        }
+
+        return;
+}
+
+
+bool Engine::Dispatch(ev_id_t evID, LPZ3_EV_OVL pZ3Ovl, bool bTimeout/* = false*/)
+{
         // 投递入异步队列
-        m_Queue.Push(evID, pZ3Ovl);
+        m_Queue.Push(evID, bTimeout, pZ3Ovl);
         
         return m_Queue.Signal();
 }

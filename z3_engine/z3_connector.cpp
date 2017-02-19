@@ -63,7 +63,7 @@ bool Connector::SetDestination(const char *pszHost, uint16_t nPort)
         return true;
 }
 
-int Connector::Run(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes)
+int Connector::Run(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes, bool bExpired)
 {
         int nResult = Z3_EOK;
 
@@ -74,13 +74,13 @@ int Connector::Run(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes)
                         nResult = Connect(SOCKET_CONNECTING_TIMEOUT);
                 break;
         case CONN_CONNECTING:
-                assert(evID == EV_CONNECT || evID == EV_TIMEOUT);
-                nResult = OnConnect(nErrorCode);
-                if (nResult == Z3_EOK)
+                assert(evID == EV_CONNECT);
+                nResult = OnConnect(nErrorCode, bExpired);
+                if (nResult == Z3_EOK && !bExpired)
                         m_ConnState = CONN_CONNECTED;
                 break;
         case CONN_CONNECTED:
-                nResult = OnEvCompleted(evID, nErrorCode, nBytes);
+                nResult = OnEvCompleted(evID, nErrorCode, nBytes, bExpired);
                 break;
         default:
                 break;
@@ -99,7 +99,6 @@ int Connector::Connect(uint32_t nTimeout /*Millseconds*/)
         PADDRINFOEX     pAddrInfoEx;
         SOCKADDR_IN     target;
         LPFN_CONNECTEX  lpfnConnectEx;
-        LPZ3OVL         pZ3Ovl;
         GUID            GuidConnectEx   = WSAID_CONNECTEX;
 
         TRACE_ENTER_FUNCTION;
@@ -132,56 +131,21 @@ int Connector::Connect(uint32_t nTimeout /*Millseconds*/)
                 return Z3_WSA_ERROR;
         }
 
-        nError = ::WSAIoctl(m_hSocket, SIO_GET_EXTENSION_FUNCTION_POINTER, &GuidConnectEx, sizeof (GuidConnectEx),
-                        &lpfnConnectEx, sizeof (lpfnConnectEx), &dwBytes, 0, 0);
-        assert(nError != SOCKET_ERROR);
-        
-        memcpy(&target, pAddrInfoEx->ai_addr, sizeof(struct sockaddr));
-        target.sin_port = ::htons(m_nPort);
-
+        // important, associates SOCKET with IOCP
         assert(m_hIOCP != NULL);
         hIOCP = ::CreateIoCompletionPort((HANDLE)m_hSocket, m_hIOCP, GetObjID(), 0);
         assert(hIOCP == m_hIOCP);
 
-        m_ConnState = CONN_CONNECTING;
-
-        // pZ3Ovl 内存的删除，由z3_engine负责
-        pZ3Ovl = AllocZ3Ovl((HANDLE)m_hSocket, EV_CONNECT, nTimeout);
-        assert(pZ3Ovl);
-
-        // 加入z3_engine 中的PENGDING列表，同时完成超时侦测
-        bOK = ::PostQueuedCompletionStatus(m_hIOCP, 0, GetObjID(), TIMEOUT_OVL_ADDR(pZ3Ovl));
-        if (!bOK)
-        {
-                TRACE_ERROR("Failed to invoke function PostQueuedCompletionStatus in connector object 0x%p, function %s, file %s, line %d\r\n",
-                        this, __FUNCTION__, __FILE__, __LINE__);
-
-                Z3_CLOSE_SOCKET(m_hSocket);
-                ::FreeAddrInfoEx(pAddrInfoEx);
-                FreeZ3Ovl(pZ3Ovl);
-
-                TRACE_EXIT_FUNCTION;
-                return Z3_SYS_ERROR;
-        }
-
-        bOK = lpfnConnectEx(m_hSocket, (struct sockaddr *)&target, sizeof(SOCKADDR_IN), 
-                        NULL, NULL, NULL, ACT_OVL_ADDR(pZ3Ovl));
+        memcpy(&target, pAddrInfoEx->ai_addr, sizeof(struct sockaddr));
+        target.sin_port = ::htons(m_nPort);
         ::FreeAddrInfoEx(pAddrInfoEx);
 
-        if  (!bOK)
-        {
-                nError = ::WSAGetLastError();
-                if (nError != WSA_IO_PENDING)
-                {
-                        TRACE_ERROR("Failed to invoke function ConnectEx, error code is %d\r\n", nError);
+        m_ConnState = CONN_CONNECTING;
 
-                        TRACE_EXIT_FUNCTION;
-                        return EWSABASE + nError;
-                }
-        }
+        nError = SocketAsyncConnect(m_hSocket, &target, nTimeout);
 
         TRACE_EXIT_FUNCTION;
-        return Z3_EOK;
+        return nError;
 }
 
 PADDRINFOEX Z3::Connector::InterpretDNS()
@@ -251,10 +215,7 @@ int Connector::WriteMsg(Msg *pMsg)
 
 int Connector::WriteMsg(const char *pBuf, uint32_t nSize)
 {
-        DWORD           dwSendBytes, dwFlags;
         int             nError;
-        BOOL            bOK;
-        LPZ3OVL         pZ3Ovl;
 
         TRACE_ENTER_FUNCTION;
 
@@ -263,110 +224,38 @@ int Connector::WriteMsg(const char *pBuf, uint32_t nSize)
         m_wsaSendBuf.len = nSize;
 
         assert(m_hSocket != INVALID_SOCKET);
-
-        // pZ3Ovl 内存的删除，由z3_engine负责
-        pZ3Ovl = AllocZ3Ovl((HANDLE)m_hSocket, EV_WRITE, SOCKET_WRITE_TIMEOUT);
-        assert(pZ3Ovl);
-        
-        // 加入z3_engine 中的PENGDING列表，同时完成超时侦测
-        bOK = ::PostQueuedCompletionStatus(m_hIOCP, 0, GetObjID(), TIMEOUT_OVL_ADDR(pZ3Ovl));
-        if (!bOK)
-        {
-                TRACE_ERROR("Failed to invoke function PostQueuedCompletionStatus in connector object 0x%p, function %s, file %s, line %d\r\n",
-                        this, __FUNCTION__, __FILE__, __LINE__);
-
-                FreeZ3Ovl(pZ3Ovl);
-
-                TRACE_EXIT_FUNCTION;
-                return Z3_SYS_ERROR;
-        }
-
-        dwFlags = 0;
-        nError = ::WSASend(m_hSocket, &m_wsaSendBuf, 1, &dwSendBytes, dwFlags, ACT_OVL_ADDR(pZ3Ovl), NULL);
-        if (SOCKET_ERROR == nError)
-        {
-                nError = ::WSAGetLastError();
-                if (nError != WSA_IO_PENDING)
-                {
-                        TRACE_ERROR("WSASend failed, error code is %d\r\n", nError);
-                        TRACE_EXIT_FUNCTION;
-                        return EWSABASE + nError;
-                }
-        }
+        nError = SocketAsyncTCPWrite(m_hSocket, SOCKET_WRITE_TIMEOUT, &m_wsaSendBuf);
 
         TRACE_EXIT_FUNCTION;
-        return Z3_EOK;
+        return nError;
 }
 
 int Connector::StartRead(uint32_t nTimeout /*Millseconds*/)
 {
-        DWORD           dwRecvBytes, dwFlags;
         int             nError;
-        BOOL            bOK;
-        LPZ3OVL         pZ3Ovl;
 
         TRACE_ENTER_FUNCTION;
 
         assert(m_hSocket != INVALID_SOCKET);
-
         memset(m_wsaRecvBuf.buf, 0, m_wsaRecvBuf.len);
-
-        // pZ3Ovl 内存的删除，由z3_engine负责
-        pZ3Ovl = AllocZ3Ovl((HANDLE)m_hSocket, EV_READ, SOCKET_READ_TIMEOUT);
-        assert(pZ3Ovl);
-      
-        // 加入z3_engine 中的PENGDING列表，同时完成超时侦测
-        bOK = ::PostQueuedCompletionStatus(m_hIOCP, 0, GetObjID(), TIMEOUT_OVL_ADDR(pZ3Ovl));
-        if (!bOK)
-        {
-                TRACE_ERROR("Failed to invoke function PostQueuedCompletionStatus in connector object 0x%p, function %s, file %s, line %d\r\n",
-                        this, __FUNCTION__, __FILE__, __LINE__);
-
-                FreeZ3Ovl(pZ3Ovl);
-
-                TRACE_EXIT_FUNCTION;
-                return Z3_SYS_ERROR;
-        }
-
-        dwFlags = 0;
-        nError = ::WSARecv(
-                        m_hSocket,
-                        &m_wsaRecvBuf,
-                        1, 
-                        &dwRecvBytes,
-                        &dwFlags,
-                        ACT_OVL_ADDR(pZ3Ovl),
-                        NULL);
-        if (nError == SOCKET_ERROR)
-        {
-                nError = ::WSAGetLastError();
-                if (nError != WSA_IO_PENDING)
-                {
-                        TRACE_ERROR("WSARecv failed, error code is %d\r\n", nError);
-                        TRACE_EXIT_FUNCTION;
-                        return EWSABASE + nError;
-                }
-        }
+        nError = SocketAsyncTCPRead(m_hSocket, SOCKET_READ_TIMEOUT, &m_wsaRecvBuf);
 
         TRACE_EXIT_FUNCTION;
 
-        return Z3_EOK;
+        return nError;
 }
 
-int Connector::OnEvCompleted(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes)
+int Connector::OnEvCompleted(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes, bool bExpired)
 {
         int nError = Z3_EOK;
 
         switch(evID)
         {
         case EV_READ:
-                nError = OnEvRead(nErrorCode, nBytes);
+                nError = OnEvRead(nErrorCode, nBytes, bExpired);
                 break;
         case EV_WRITE:
-                nError = OnEvWrite(nErrorCode, nBytes);
-                break;
-        case EV_TIMEOUT:
-                nError = OnEvTimeout(nErrorCode, nBytes);
+                nError = OnEvWrite(nErrorCode, nBytes, bExpired);
                 break;
         default:
                 assert(false);
@@ -376,13 +265,17 @@ int Connector::OnEvCompleted(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes)
         return nError;
 }
 
-int Connector::OnEvRead(uint32_t nErrorCode, uint32_t nBytes)
+int Connector::OnEvRead(uint32_t nErrorCode, uint32_t nBytes, bool bExpired)
 {
         ProtoParser     *pParser;
         Msg             *pMsg;
         uint32_t        nError = Z3_EOK;
 
-        TRACE_ENTER_FUNCTION;
+        if (bExpired)
+        {
+                TRACE_WARN("Timer expired for operation \"READ\"\r\n");
+                return Z3_EINTR;
+        }
 
         if (nBytes <= 0)
         {
@@ -411,13 +304,18 @@ int Connector::OnEvRead(uint32_t nErrorCode, uint32_t nBytes)
                 nError = Dispatch(pMsg, NULL);
         }
 
-        TRACE_EXIT_FUNCTION;
         return nError;
 }
 
-int Connector::OnEvWrite(uint32_t nErrorCode, uint32_t nBytes)
+int Connector::OnEvWrite(uint32_t nErrorCode, uint32_t nBytes, bool bExpired)
 {
         int     nError = Z3_EOK;
+
+        if (bExpired)
+        {
+                TRACE_WARN("Timer expired for operation \"WRITE\"\r\n");
+                return Z3_EINTR;
+        }
 
         if (nErrorCode != 0)
         {
@@ -438,14 +336,6 @@ int Connector::OnEvWrite(uint32_t nErrorCode, uint32_t nBytes)
                 TRACE_DEBUG("Succeed to send a whole RTSP message\r\n");
                 TRACE_DUMP(LOG_DEBUG, m_wsaSendBuf.buf, m_wsaSendBuf.len);
         }
-
-        return nError;
-}
-
-int Connector::OnEvTimeout(uint32_t nErrorCode, uint32_t nBytes)
-{
-        int     nError = Z3_EOK;
-
 
         return nError;
 }

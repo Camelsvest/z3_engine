@@ -26,22 +26,23 @@ bool Executor::OnThreadStart()
 
 void Executor::RunOnce()
 {
-        ev_id_t evID;
-        LPZ3OVL pZ3Ovl;
-        void    *pData;
+        Z3EV ev;
+        bool bSucceed;
+        LPZ3_EV_OVL pZ3Ovl;
         IOCPObj *pObj;
 
-        pData = m_pQueue->WaitForEV(evID);
-        if (pData)
+        bSucceed = m_pQueue->WaitForEV(ev, INFINITE);
+        if (bSucceed)
         {
-                assert(evID != EV_UNKNOWN);
-                pZ3Ovl = static_cast<LPZ3OVL>(pData);                
+                assert(ev.id != EV_UNKNOWN);
+                pZ3Ovl = static_cast<LPZ3_EV_OVL>(ev.data);             
                 pObj = static_cast<IOCPObj *>(pZ3Ovl->data);
                 
-                pObj->Lock();
-                pObj->Run(evID, ACT_OVL_ADDR(pZ3Ovl)->Internal, ACT_OVL_ADDR(pZ3Ovl)->InternalHigh);
-                pObj->FreeZ3Ovl(pZ3Ovl);
+                pObj->Lock();                
+                pObj->Run(ev.id, pZ3Ovl->ovl.Internal, pZ3Ovl->ovl.InternalHigh, ev.timeout);
                 pObj->Unlock();
+
+                FreeZ3Ovl(pZ3Ovl);                
         }
 }
 

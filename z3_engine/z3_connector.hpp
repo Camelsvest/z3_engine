@@ -18,7 +18,7 @@ namespace Z3 {
                 inline char*            GetRecvBuffer() { return m_pRecvBuf; }
                 inline unsigned int     GetRecvBufSize() { return m_nRecvBufSize; }
 
-                virtual int     Run(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes);
+                virtual int     Run(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes, bool bExpired = false);
 
         protected:
                 typedef enum _CONNECTOR_STATE
@@ -31,11 +31,10 @@ namespace Z3 {
                 virtual ~Connector();
 
                 int     Connect(uint32_t nTimeout /*Millseconds*/);
-                virtual int     OnConnect(uint32_t nErrorCode) = 0;
-                virtual int     OnEvCompleted(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes);
-                virtual int     OnEvRead(uint32_t nErrorCode, uint32_t nBytes);
-                virtual int     OnEvWrite(uint32_t nErrorCode, uint32_t nBytes);
-                virtual int     OnEvTimeout(uint32_t nErrorCode, uint32_t nBytes);
+                virtual int     OnConnect(uint32_t nErrorCode, bool bExpired) = 0;
+                virtual int     OnEvCompleted(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes, bool bExpired);
+                virtual int     OnEvRead(uint32_t nErrorCode, uint32_t nBytes, bool bExpired);
+                virtual int     OnEvWrite(uint32_t nErrorCode, uint32_t nBytes, bool bExpired);
 
                 virtual ProtoParser*    GetProtoParser() = 0;
                 virtual int     Dispatch(Msg *pMsg, void *pData) = 0;

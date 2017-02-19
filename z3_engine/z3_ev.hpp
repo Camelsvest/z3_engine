@@ -11,41 +11,55 @@ typedef enum _ev_id
         EV_WRITE,
         EV_CONNECT,
         EV_ACCEPT,
+        EV_OP_ADD,
+        EV_OP_REMOVE
 } ev_id_t;
 
 typedef struct _Z3_EV_OVERLAPPED
 {
-        OVERLAPPED      ovl;
-        ev_id_t         ev_id;
-} Z3_EV_OVL;
-
-typedef struct _Z3_OVERLAPPED
-{
-        Z3_EV_OVL               act_ovl;
-        Z3_EV_OVL               timeout_ovl;
-        HANDLE                  file_handle;
-        struct __timeb64        timeout;    // timeout millseconds;
-        SOCKADDR_IN             remote_addr;
-        int                     remote_addr_size;
+        OVERLAPPED              ovl;
+        ev_id_t                 ev_id;
+        union
+        {
+                HANDLE          file_handle;
+                uint32_t        timer_id;
+        } handle;
+        struct __timeb64        timeout;
         void                    *data;
-} Z3OVL, *LPZ3OVL;
+} Z3_EV_OVL, *LPZ3_EV_OVL;
+
+//typedef struct _Z3_OVERLAPPED
+//{
+//        Z3_EV_OVL               act_ovl;
+//        Z3_EV_OVL               timeout_ovl;
+//        HANDLE                  file_handle;
+//        struct __timeb64        timeout;    // timeout millseconds;
+//        SOCKADDR_IN             remote_addr;
+//        int                     remote_addr_size;
+//        void                    *data;
+//} Z3OVL, *LPZ3OVL;
 
 typedef struct _Z3_EV
 {
         ev_id_t id;
+        bool    timeout;
         void    *data;
 } Z3EV, *LPZ3EV;
 
-#define ACT_OVL_ADDR(z3ovl_pointer)                     ((LPOVERLAPPED)(z3ovl_pointer))
-#define TIMEOUT_OVL_ADDR(z3ovl_pointer)                 (LPOVERLAPPED)((char *)z3ovl_pointer + sizeof(Z3_EV_OVL))
-#define Z3OVL_ADDR_FROM_TIMEOUTOVL(timeout_ovl_pointer) (LPZ3OVL)((char *)timeout_ovl_pointer - sizeof(Z3_EV_OVL))
-#define Z3OVL_ADDR_FROM_ACTOVL(act_ovl_pointer)         (LPZ3OVL)(act_ovl_pointer)
-#define SOCK_ADDR_FROM_Z3OVL(z3ovl_pointer)             (z3ovl_pointer->remote_addr)
-#define SOCK_ADDR_SIZE_FROM_Z3OVL(z3ovl_pointer)        (z3ovl_pointer->remote_addr_size)
+#define ACT_OVL_ADDR(z3ovl_pointer)                     ((LPOVERLAPPED)(&(z3ovl_pointer->act_ovl)))
+//#define TIMEOUT_OVL_ADDR(z3ovl_pointer)                 (LPOVERLAPPED)((char *)z3ovl_pointer + sizeof(Z3_EV_OVL))
+//#define Z3OVL_ADDR_FROM_TIMEOUTOVL(timeout_ovl_pointer) (LPZ3OVL)((char *)timeout_ovl_pointer - sizeof(Z3_EV_OVL))
+//#define Z3OVL_ADDR_FROM_ACTOVL(act_ovl_pointer)         (LPZ3OVL)(act_ovl_pointer)
+//#define SOCK_ADDR_FROM_Z3OVL(z3ovl_pointer)             (z3ovl_pointer->remote_addr)
+//#define SOCK_ADDR_SIZE_FROM_Z3OVL(z3ovl_pointer)        (z3ovl_pointer->remote_addr_size)
 #define GET_EV_ID(poverlapped)                          (((Z3_EV_OVL *)poverlapped)->ev_id)
+#define GET_EV_DATA(poverlapped)                        (((Z3_EV_OVL *)poverlapped)->data)
 
 #define CLEAN_ACT_OVL(z3ovl_pointer)            { memset(&z3ovl_pointer->act_ovl, 0, sizeof(Z3_EV_OVL)); }
-#define CLEAN_TIMEOUT_OVL(z3ovl_pointer)        { memset(&z3ovl_pointer->timeout_ovl, 0, sizeof(Z3_EV_OVL)); }
+//#define CLEAN_TIMEOUT_OVL(z3ovl_pointer)        { memset(&z3ovl_pointer->timeout_ovl, 0, sizeof(Z3_EV_OVL)); }
+
+LPZ3_EV_OVL AllocZ3Ovl(HANDLE hFileHandle, ev_id_t evID, uint32_t millseconds, void *data = NULL);
+void FreeZ3Ovl(LPZ3_EV_OVL pZ3Ovl);
 
 
 #endif
