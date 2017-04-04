@@ -7,6 +7,7 @@
 #include <Mswsock.h>
 #include <Windows.h>
 #include <process.h>
+#include <tchar.h>
 
 #include <assert.h>
 #include <stdint.h>

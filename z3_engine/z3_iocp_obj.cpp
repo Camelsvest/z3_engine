@@ -176,13 +176,15 @@ int IOCPObj::AddEvent(LPZ3_EV_OVL pZ3Ovl, bool bAdd /* = true*/)
 
 int IOCPObj::AddTimer(uint32_t nTimerID, uint32_t nMillseconds)
 {
-        LPZ3_EV_OVL pZ3Ovl;
+        //LPZ3_EV_OVL pZ3Ovl;
 
-        pZ3Ovl = AllocZ3Ovl((HANDLE)nTimerID, EV_TIMEOUT, nMillseconds);
-        if (pZ3Ovl == NULL)
-                return Z3_ENOMEM;
+        //pZ3Ovl = AllocZ3Ovl((HANDLE)nTimerID, EV_TIMEOUT, nMillseconds);
+        //if (pZ3Ovl == NULL)
+        //        return Z3_ENOMEM;
 
-        return AddEvent(pZ3Ovl, true);
+        //return AddEvent(pZ3Ovl, true);
+
+
 }
 
 int IOCPObj::RemoveTimer(uint32_t nTimerID)

@@ -38,7 +38,50 @@ namespace Z3 {
                 static void    operator delete[](void *p);
         };
 
-        class AsyncObj : public MemoryObject
+        class RefObj : public MemoryObject
+        {
+        public:
+                RefObj();
+
+                inline uint32_t GetRefCount();
+
+                inline uint32_t AddRef();
+                inline void     Release(bool bFree = true);
+
+        protected:
+                virtual ~RefObj();
+
+        private:
+                int32_t         m_nRefCount;
+        };
+
+        /*
+         * Description: 全局Timer对象，负责所有timer的创建和删除
+         */
+        class TimerEngine : public RefObj
+        {
+        public:
+                static TimerEngine*     Instance();
+                static void             Destroy();
+
+                HANDLE  AddTimer(PVOID lpParameter, uint32_t millseconds, bool bRepeat = false);
+                bool    DeleteTimer(uint32_t nObjID, HANDLE hTimer);
+
+        protected:
+                TimerEngine();
+                ~TimerEngine();
+
+                static void CALLBACK TimerCallBack(PVOID lpParameter, BOOLEAN bTimerExpired);
+
+        private:
+                static TimerEngine*     m_pInstance;
+                static HANDLE           m_hMutex;
+
+                static HANDLE           m_hTimerQueue;
+        };
+
+        
+        class AsyncObj : public RefObj
         {
         public:
                 AsyncObj(uint32_t nObjID = INVALID_OBJ_ID);
@@ -47,8 +90,8 @@ namespace Z3 {
                 inline void     Unlock()        { return m_Lock.Off(); }
 
                 inline uint32_t GetObjID()      { return m_nObjID; }
-                uint32_t        GetRefCount();
 
+                uint32_t        GetRefCount();
                 uint32_t        AddRef();
                 void            Release();
 
@@ -58,7 +101,24 @@ namespace Z3 {
         private:
                 Z3::Lock        m_Lock;
                 uint32_t        m_nObjID;
-                int32_t         m_nRefCount;
+        };
+
+        class TimerObj : public AsyncObj
+        {
+        public:
+                TimerObj(uint32_t nObjID = INVALID_OBJ_ID);
+
+                bool AddTimer(uint32_t nTimerID, void *pData, uint32_t millseconds, bool bRepeat = false);
+                bool DeleteTimer(uint32_t nTimerID);
+
+                virtual void    OnTimer(uint32_t nTimerID, void *pData);
+
+        protected:
+                virtual ~TimerObj();
+
+        private:
+                TimerEngine *m_pTimerEngine;
+                std::map<uint32_t, HANDLE> m_mapTimerHandle;
         };
 };
 
