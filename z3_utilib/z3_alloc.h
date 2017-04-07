@@ -1,7 +1,7 @@
 #ifndef _Z3_ALLOC_H_
 #define _Z3_ALLOC_H_
 
-#if defined(Z3_MEM_DEBUG) || defined(DEBUG) || defined(_DEBUG)
+#if defined(Z3_MEM_DEBUG) || defined(_DEBUG) || defined(DEBUG)
         #define z3_alloc_init()                 _z3_alloc_init()
         #define z3_alloc_uninit()               _z3_alloc_uninit()
         #define z3_alloc_show_statistics()      _z3_alloc_show_statistics()

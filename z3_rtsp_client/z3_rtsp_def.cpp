@@ -326,24 +326,6 @@ char * Z3::strchomp(char *str)
 	return str;
 }
 
-char* Z3::z3_strdup(const char *str)
-{
-	char *new_str;
-	size_t length, size;
-
-	if (str)
-	{
-		length = strlen(str);
-                size = length + 1;
-		new_str = (char *)z3_calloc(size, sizeof(char));
-		strncpy_s(new_str, size, str, length);
-	}
-	else
-		new_str = NULL;
-
-	return new_str;
-}
-
 void Z3::read_string(char * dest, unsigned int size, char ** src)
 {
         unsigned int idx;

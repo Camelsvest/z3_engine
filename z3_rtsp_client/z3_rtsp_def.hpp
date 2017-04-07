@@ -261,8 +261,6 @@ namespace Z3 {
          */
         char *                  strchomp(char *str);
         
-        char*                   z3_strdup(const char *str);
-
         void                    read_string(char * dest, unsigned int size, char ** src);
         void                    read_string_del (char * dest, unsigned int size, char del, char ** src);
 

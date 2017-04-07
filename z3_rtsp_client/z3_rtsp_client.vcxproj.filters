@@ -75,6 +75,12 @@
     <ClInclude Include="rtcp_from_spec.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="z3_rtcp_udp_session.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="z3_ip_packet.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="z3_rtsp_session.cpp">
@@ -120,6 +126,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="rtcp_from_spec.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="z3_rtcp_udp_session.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

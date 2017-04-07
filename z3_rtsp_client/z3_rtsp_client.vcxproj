@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -14,18 +14,21 @@
     <ProjectGuid>{1D63656D-4472-4554-8B66-CD910DC23831}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>z3_rtsp_client</RootNamespace>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -80,10 +83,12 @@
   <ItemGroup>
     <ClInclude Include="rtcp_from_spec.h" />
     <ClInclude Include="z3_h264_frame.hpp" />
+    <ClInclude Include="z3_ip_packet.hpp" />
     <ClInclude Include="z3_media_frame.hpp" />
     <ClInclude Include="z3_media_ports.hpp" />
     <ClInclude Include="z3_rtcp.hpp" />
     <ClInclude Include="z3_rtcp_msg.hpp" />
+    <ClInclude Include="z3_rtcp_udp_session.hpp" />
     <ClInclude Include="z3_rtp.hpp" />
     <ClInclude Include="z3_rtp_msg.hpp" />
     <ClInclude Include="z3_rtp_reception_stats.hpp" />
@@ -104,6 +109,7 @@
     <ClCompile Include="z3_media_frame.cpp" />
     <ClCompile Include="z3_media_ports.cpp" />
     <ClCompile Include="z3_rtcp_msg.cpp" />
+    <ClCompile Include="z3_rtcp_udp_session.cpp" />
     <ClCompile Include="z3_rtp_msg.cpp" />
     <ClCompile Include="z3_rtp_reception_stats.cpp" />
     <ClCompile Include="z3_rtp_udp_session.cpp" />
