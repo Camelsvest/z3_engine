@@ -28,9 +28,6 @@
     <ClInclude Include="z3_thread.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="z3_obj.hpp">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="z3_connector.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -70,15 +67,24 @@
     <ClInclude Include="z3_udp_session.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="z3_memory_obj.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="z3_ref_obj.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="z3_timer_obj.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="z3_async_obj.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="z3_engine.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="z3_thread.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="z3_obj.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="z3_connector.cpp">
@@ -111,7 +117,16 @@
     <ClCompile Include="z3_udp_session.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="z3_ev.cpp">
+    <ClCompile Include="z3_memory_obj.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="z3_ref_obj.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="z3_timer_obj.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="z3_async_obj.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

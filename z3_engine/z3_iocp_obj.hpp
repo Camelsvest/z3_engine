@@ -1,13 +1,15 @@
 #ifndef _Z3_IOCP_OBJ_HPP_
 #define _Z3_IOCP_OBJ_HPP_
 
-#include "z3_obj.hpp"
+#include "z3_timer_obj.hpp"
 #include "z3_ev.hpp"
 
 namespace Z3 {
 
-        class IOCPObj : public AsyncObj
+        class IOCPObj : public TimerObj
         {
+                friend class Engine;
+                friend class Executor;
         public:
                 IOCPObj(HANDLE hIOCP, uint32_t nObjID);
                 
@@ -17,18 +19,23 @@ namespace Z3 {
 
                 int     SocketAsyncUDPRead(SOCKET hSocket, uint32_t nMillseconds, WSABUF *pwsaBuf, SOCKADDR *pSockAddr, int *pnAddrSize);
                 int     SocketAsyncUDPWrite(SOCKET hSocket, uint32_t nMillseconds, WSABUF *pwsaBuf);
-
-                int     AddEvent(LPZ3_EV_OVL pZ3Ovl, bool bAdd = true);
-                
-                int     AddTimer(uint32_t nTimerID, uint32_t nMillseconds);
-                int     RemoveTimer(uint32_t nTimerID);
-
+              
                 int Start(void);
 
                 virtual int     Run(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes, bool bExpired = false) = 0;
+                virtual void    OnTimer(uint32_t nTimerID, void *pData);
 
         protected:
                 virtual ~IOCPObj();
+
+                int     AddTimer(uint32_t nTimerID, uint32_t nMillseconds);
+                int     RemoveTimer(uint32_t nTimerID);
+
+        private:
+                LPZ3_EV_OVL     AllocZ3Ovl(HANDLE hFileHandle, ev_id_t evID, uint32_t millseconds);
+                inline void     FreeZ3Ovl(LPZ3_EV_OVL pOvl);
+
+                inline void     AddIntoPendingList(LPZ3_EV_OVL pOvl);
 
         protected:
                 HANDLE  m_hIOCP;
@@ -37,7 +44,7 @@ namespace Z3 {
                 typedef std::list<LPZ3_EV_OVL>              Z3OVL_LIST;
                 typedef std::list<LPZ3_EV_OVL>::iterator    Z3OVL_LIST_ITERATOR;
 
-                Z3OVL_LIST      m_lstIdle;
+                Z3OVL_LIST      m_lstPendingZ3Ovl;
         };
 };
 #endif

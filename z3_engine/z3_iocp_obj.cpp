@@ -8,7 +8,7 @@ using namespace Z3;
 #endif
 
 IOCPObj::IOCPObj(HANDLE hIOCP, uint32_t nObjID)
-        : AsyncObj(nObjID)
+        : TimerObj(nObjID)
         , m_hIOCP(hIOCP)
 {
         assert(m_hIOCP != NULL);
@@ -16,15 +16,6 @@ IOCPObj::IOCPObj(HANDLE hIOCP, uint32_t nObjID)
 
 IOCPObj::~IOCPObj()
 {
-        LPZ3_EV_OVL pOvl;
-
-        while(!m_lstIdle.empty())
-        {
-                pOvl = m_lstIdle.front();
-
-                z3_free(pOvl);
-                m_lstIdle.pop_front();
-        }
 }
 
 int IOCPObj::SocketAsyncConnect(SOCKET hSocket, SOCKADDR_IN *pTarget, uint32_t nMillseconds)
@@ -48,15 +39,7 @@ int IOCPObj::SocketAsyncConnect(SOCKET hSocket, SOCKADDR_IN *pTarget, uint32_t n
         if (pZ3Ovl == NULL)
                 return Z3_ENOMEM;
 
-        nError = AddEvent(pZ3Ovl);
-        if (Z3_EOK != nError)
-        {
-                TRACE_ERROR("Failed to invoke function IOCPObj::AddEvent in connector object 0x%p, function %s, file %s, line %d\r\n",
-                        this, __FUNCTION__, __FILE__, __LINE__);
-
-                FreeZ3Ovl(pZ3Ovl);
-                return nError;
-        }
+        AddIntoPendingList(pZ3Ovl);
 
         bOK = lpfnConnectEx(hSocket, (struct sockaddr *)pTarget, sizeof(SOCKADDR_IN),
                 NULL, NULL, NULL, (LPOVERLAPPED)pZ3Ovl);
@@ -87,15 +70,7 @@ int IOCPObj::SocketAsyncTCPRead(SOCKET hSocket, uint32_t nMillseconds, WSABUF *p
         if (pZ3Ovl == NULL)
                 return Z3_ENOMEM;
 
-        nError = AddEvent(pZ3Ovl);
-        if (Z3_EOK != nError)
-        {
-                TRACE_ERROR("Failed to AddEvent EV_READ in IOCPObj 0x%p, function %s, file %s, line %d\r\n",
-                        this, __FUNCTION__, __FILE__, __LINE__);
-
-                FreeZ3Ovl(pZ3Ovl);
-                return nError;
-        }
+        AddIntoPendingList(pZ3Ovl);
 
         dwFlags = 0;
         nError = ::WSARecv(hSocket, pwsaBuf, 1, &dwRecvBytes, &dwFlags, (LPOVERLAPPED)pZ3Ovl, NULL);
@@ -126,15 +101,7 @@ int IOCPObj::SocketAsyncTCPWrite(SOCKET hSocket, uint32_t nMillseconds, WSABUF *
         if (pZ3Ovl == NULL)
                 return Z3_ENOMEM;
 
-        nError = AddEvent(pZ3Ovl);
-        if (Z3_EOK != nError)
-        {
-                TRACE_ERROR("Failed to AddEvent EV_WRITE in IOCPObj 0x%p, function %s, file %s, line %d\r\n",
-                        this, __FUNCTION__, __FILE__, __LINE__);
-
-                FreeZ3Ovl(pZ3Ovl);
-                return nError;
-        }
+        AddIntoPendingList(pZ3Ovl);
 
         dwFlags = 0;
         nError = ::WSASend(hSocket, pwsaBuf, 1, &dwSendBytes, dwFlags, (LPOVERLAPPED)pZ3Ovl, NULL);
@@ -151,84 +118,6 @@ int IOCPObj::SocketAsyncTCPWrite(SOCKET hSocket, uint32_t nMillseconds, WSABUF *
         return Z3_EOK;
 }
 
-int IOCPObj::AddEvent(LPZ3_EV_OVL pZ3Ovl, bool bAdd /* = true*/)
-{
-        BOOL bOK;
-        LPZ3_EV_OVL pOvl;
-
-        pOvl = AllocZ3Ovl(NULL, bAdd ? EV_OP_ADD : EV_OP_REMOVE, INFINITE);
-        
-        if (pOvl == NULL)
-                return Z3_ENOMEM;
-        pOvl->data = pZ3Ovl;
-        
-        if (pOvl != NULL && m_hIOCP != NULL)
-        {
-                // 加入z3_engine 中的PENGDING列表，同时完成超时侦测
-                // 触发线程将pZ3Ovl对象加入侦测链表
-                bOK = ::PostQueuedCompletionStatus(m_hIOCP, 0, GetObjID(), (LPOVERLAPPED)pOvl);
-                if (bOK)
-                        return Z3_EOK;
-        }
-
-        return Z3_SYS_ERROR;
-}
-
-int IOCPObj::AddTimer(uint32_t nTimerID, uint32_t nMillseconds)
-{
-        //LPZ3_EV_OVL pZ3Ovl;
-
-        //pZ3Ovl = AllocZ3Ovl((HANDLE)nTimerID, EV_TIMEOUT, nMillseconds);
-        //if (pZ3Ovl == NULL)
-        //        return Z3_ENOMEM;
-
-        //return AddEvent(pZ3Ovl, true);
-
-
-}
-
-int IOCPObj::RemoveTimer(uint32_t nTimerID)
-{
-        LPZ3_EV_OVL pZ3Ovl;
-
-        // timer is 0, it means timer shall be invalid, delete it
-        pZ3Ovl = AllocZ3Ovl((HANDLE)nTimerID, EV_TIMEOUT, 0);
-        if (pZ3Ovl == NULL)
-                return Z3_ENOMEM;
-
-        return AddEvent(pZ3Ovl, false);
-}
-
-int IOCPObj::Start(void)
-{
-        int             nError;
-        LPZ3_EV_OVL     pZ3Ovl;
-
-        // pZ3Ovl 内存的删除，由z3_engine负责
-        pZ3Ovl = AllocZ3Ovl(NULL, EV_INSTANCE_START, INFINITE);
-        assert(pZ3Ovl);
-
-        nError = AddEvent(pZ3Ovl);
-        if (nError != Z3_EOK)
-        {
-                FreeZ3Ovl(pZ3Ovl);
-                return nError;                
-        }
-
-        // 投递一个“空”事件（实际上是随便投递一个事件），让IOCP启动，自动开始Dispatch，对象运行；
-        /*bOK = ::PostQueuedCompletionStatus(m_hIOCP, 0, GetObjID(), ACT_OVL_ADDR(pZ3Ovl));
-        if (!bOK)
-        {
-                TRACE_ERROR("Failed to invoke function PostQueuedCompletionStatus in connector object 0x%p, function %s, file %s, line %d\r\n",
-                        this, __FUNCTION__, __FILE__, __LINE__);
-
-                FreeZ3Ovl(pZ3Ovl);
-                return Z3_SYS_ERROR;
-        }*/
-
-        return 0;        
-}
-
 int IOCPObj::SocketAsyncUDPRead(SOCKET hSocket, uint32_t nMillseconds, WSABUF *pwsaBuf, SOCKADDR *pSockAddr, int *pnAddrSize)
 {
         int     nError;
@@ -243,15 +132,7 @@ int IOCPObj::SocketAsyncUDPRead(SOCKET hSocket, uint32_t nMillseconds, WSABUF *p
         if (pZ3Ovl == NULL)
                 return Z3_ENOMEM;
 
-        nError = AddEvent(pZ3Ovl);
-        if (Z3_EOK != nError)
-        {
-                TRACE_ERROR("Failed to AddEvent EV_READ in IOCPObj 0x%p, function %s, file %s, line %d\r\n",
-                        this, __FUNCTION__, __FILE__, __LINE__);
-
-                FreeZ3Ovl(pZ3Ovl);
-                return nError;
-        }
+        AddIntoPendingList(pZ3Ovl);
 
         nError = ::WSARecvFrom(hSocket, pwsaBuf, 1, &dwRecvBytes, &dwFlags, pSockAddr,
                 pnAddrSize, (LPOVERLAPPED)pZ3Ovl, NULL);
@@ -272,4 +153,96 @@ int IOCPObj::SocketAsyncUDPWrite(SOCKET hSocket, uint32_t nMillseconds, WSABUF *
 {
         assert(false);
         return Z3_EOK;
+}
+
+int IOCPObj::AddTimer(uint32_t nTimerID, uint32_t nMillseconds)
+{
+        if (true == TimerObj::AddTimer(nTimerID, this, nMillseconds, false))
+                return Z3_EOK;
+        else
+                return Z3_ERROR;
+}
+
+int IOCPObj::RemoveTimer(uint32_t nTimerID)
+{
+        if (true == TimerObj::DeleteTimer(nTimerID))
+                return Z3_EOK;
+        else
+                return Z3_ERROR;
+}
+
+LPZ3_EV_OVL IOCPObj::AllocZ3Ovl(HANDLE hFileHandle, ev_id_t evID, uint32_t millseconds)
+{
+        uint32_t result;
+        LPZ3_EV_OVL pOvl;
+
+        pOvl = (LPZ3_EV_OVL)z3_calloc(1, sizeof(Z3_EV_OVL));
+        if (!pOvl)
+                return NULL;
+
+        if (millseconds > 0)
+        {
+                pOvl->timer_id = Z3::TimerEngine::CreateTimerID();
+                result = AddTimer(pOvl->timer_id, millseconds);
+                if (result != Z3_EOK)
+                {
+                        z3_free(pOvl);
+                        return NULL;
+                }
+        }
+        else
+                pOvl->timer_id = Z3_INVALID_TIMER_ID;
+
+        pOvl->iocp_handle = hFileHandle;
+
+        pOvl->ev_id = evID;
+        pOvl->data = this;
+
+        return pOvl;
+}
+
+void IOCPObj::FreeZ3Ovl(LPZ3_EV_OVL pOvl)
+{
+        z3_free(pOvl);
+}
+
+int IOCPObj::Start(void)
+{
+        //int             nError;
+        //LPZ3_EV_OVL     pZ3Ovl;
+
+        // 投递一个“空”事件（实际上是随便投递一个事件），让IOCP启动，自动开始Dispatch，对象运行；
+        /*bOK = ::PostQueuedCompletionStatus(m_hIOCP, 0, GetObjID(), ACT_OVL_ADDR(pZ3Ovl));
+        if (!bOK)
+        {
+                TRACE_ERROR("Failed to invoke function PostQueuedCompletionStatus in connector object 0x%p, function %s, file %s, line %d\r\n",
+                        this, __FUNCTION__, __FILE__, __LINE__);
+
+                FreeZ3Ovl(pZ3Ovl);
+                return Z3_SYS_ERROR;
+        }*/
+
+        return 0;        
+}
+
+
+void IOCPObj::AddIntoPendingList(LPZ3_EV_OVL pOvl)
+{
+        Lock();
+        m_lstPendingZ3Ovl.push_front(pOvl);
+        Unlock();
+}
+
+void IOCPObj::OnTimer(uint32_t nTimerID, void *pData)
+{
+        LPZ3_EV_OVL     pZ3Ovl;
+        IOCPObj         *pObj;
+
+        pObj = static_cast<IOCPObj *>(pData);
+        assert(pObj != NULL);
+
+        pObj->Lock();
+        //::CancelIoEx(pObj->)
+
+
 }

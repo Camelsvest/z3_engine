@@ -1,146 +1,12 @@
 #include "z3_common.hpp"
-#include "z3_obj.hpp"
+#include "z3_timer_obj.hpp"
 
 using namespace Z3;
-
-Lock::Lock()
-        : m_hMutex(NULL)
-{
-}
-
-Lock::~Lock()
-{
-        Z3_CLOSE_HANDLE(m_hMutex);
-}
-
-bool Lock::On()
-{
-        DWORD dwResult;
-
-        if (m_hMutex == NULL)
-        {
-                m_hMutex = ::CreateMutexA(NULL, FALSE, NULL);
-                assert(m_hMutex);
-        }
-
-        dwResult = ::WaitForSingleObject(m_hMutex, INFINITE);
-        return (dwResult == WAIT_OBJECT_0);
-}
-
-void Lock::Off()
-{
-        assert (m_hMutex);
-        ::ReleaseMutex(m_hMutex);
-}
-
-MemoryObject::MemoryObject()
-{
-}
-
-MemoryObject::~MemoryObject()
-{
-}
-
-void* MemoryObject::operator new(size_t nSize, char *pszFilename, unsigned int nLine)
-{
-#ifndef _DEBUG
-        return malloc(nSize);
-#else
-        return _z3_malloc(nSize, pszFilename, nLine);
-#endif
-}
-
-void MemoryObject::operator delete(void *p, char *pszFilename, unsigned int nLine)
-{
-        MemoryObject::operator delete(p);
-}
-
-void* MemoryObject::operator new[](size_t nSize, char *pszFilename, unsigned int nLine)
-{
-#ifndef _DEBUG
-        return malloc(nSize);
-#else
-        return _z3_malloc(nSize, pszFilename, nLine);
-#endif
-}
-
-void MemoryObject::operator delete[](void *p, char *pszFilename, unsigned int nLine)
-{
-#ifndef _DEBUG
-        free(p);
-#else
-        _z3_free(p);
-#endif
-}
-
-void* MemoryObject::operator new(size_t nSize)
-{
-#ifndef _DEBUG
-        return malloc(nSize);
-#else
-        return z3_malloc(nSize);
-#endif
-}
-
-void MemoryObject::operator delete(void *p)
-{
-#ifndef _DEBUG
-        free(p);
-#else
-        z3_free(p);
-#endif
-}
-
-void* MemoryObject::operator new[](size_t nSize)
-{
-#ifndef _DEBUG
-        return malloc(nSize);
-#else
-        return z3_malloc(nSize);
-#endif
-}
-
-void MemoryObject::operator delete[](void *p)
-{
-#ifndef _DEBUG
-        free(p);
-#else
-        _z3_free(p);
-#endif
-}
-
-RefObj::RefObj()
-        : m_nRefCount(0)
-{
-}
-
-RefObj::~RefObj()
-{
-
-}
-
-uint32_t RefObj::GetRefCount()
-{
-        return m_nRefCount;
-}
-
-uint32_t RefObj::AddRef()
-{
-        return ++m_nRefCount;
-}
-
-void RefObj::Release(bool bFree /* = true*/)
-{
-        if (m_nRefCount > 0)
-                --m_nRefCount;
-
-        if (bFree && m_nRefCount == 0)
-                delete this;
-}
 
 TimerEngine*    TimerEngine::m_pInstance = NULL;
 HANDLE          TimerEngine::m_hMutex = NULL;
 HANDLE          TimerEngine::m_hTimerQueue = NULL;
+uint32_t        TimerEngine::m_nTimerIDIndex = 10000;
 
 TimerEngine::TimerEngine()
         :RefObj()
@@ -169,7 +35,7 @@ void TimerEngine::TimerCallBack(PVOID lpParameter, BOOLEAN bTimerExpired)
 {
         timer_ctx_t     *pCtx;
         TimerObj        *pTimerObj;
-        
+
         pCtx = static_cast<timer_ctx_t *>(lpParameter);
         assert(pCtx);
 
@@ -178,11 +44,7 @@ void TimerEngine::TimerCallBack(PVOID lpParameter, BOOLEAN bTimerExpired)
 
         pTimerObj->OnTimer(pCtx->nTimerID, pCtx->pData);
 
-#ifndef _DEBUG
-        free(pCtx);
-#else
-        _z3_free(pCtx);
-#endif
+        z3_free(pCtx);
 
         return;
 }
@@ -220,11 +82,27 @@ void TimerEngine::Destroy()
         assert(m_hMutex != NULL);
         dwResult = ::WaitForSingleObject(m_hMutex, INFINITE);
         assert(dwResult == WAIT_OBJECT_0);
-        
+
         if (m_pInstance)
                 m_pInstance->Release(); // delete m_pInstance;
 
         ::CloseHandle(m_hMutex);
+}
+
+uint32_t TimerEngine::CreateTimerID()
+{
+        uint32_t nTimerID;
+        DWORD dwResult;
+
+        assert(m_hMutex != NULL);
+        dwResult = ::WaitForSingleObject(m_hMutex, INFINITE);
+        assert(dwResult == WAIT_OBJECT_0);
+
+        nTimerID = ++m_nTimerIDIndex;
+
+        ::CloseHandle(m_hMutex);
+
+        return nTimerID;
 }
 
 HANDLE TimerEngine::AddTimer(PVOID lpParameter, uint32_t millseconds, bool bRepeat)
@@ -260,61 +138,15 @@ bool TimerEngine::DeleteTimer(uint32_t nObjID, HANDLE hTimer)
 
         bOK = ::DeleteTimerQueueTimer(m_hTimerQueue, hTimer, hCompletionEvent);
 
-        dwResult = ::WaitForSingleObject(hCompletionEvent, INFINITE);     
-        CloseHandle(hCompletionEvent);
+        dwResult = ::WaitForSingleObject(hCompletionEvent, INFINITE);
+        Z3_CLOSE_HANDLE(hCompletionEvent);
 
         if (dwResult == WAIT_OBJECT_0 && bOK)
         {
                 return true;
         }
-             
+
         return false;
-}
-
-AsyncObj::AsyncObj(uint32_t nObjID)
-        : m_nObjID(nObjID)
-{
-}
-
-AsyncObj::~AsyncObj()
-{
-}
-
-uint32_t AsyncObj::GetRefCount()
-{
-        uint32_t nCount;
-
-        m_Lock.On();
-        nCount = RefObj::GetRefCount();
-        m_Lock.Off();
-
-        return nCount;
-}
-
-uint32_t AsyncObj::AddRef()
-{
-        uint32_t nCount;
-
-        m_Lock.On();
-        nCount = RefObj::AddRef();
-        m_Lock.Off();
-
-        return nCount;
-}
-
-void AsyncObj::Release()
-{
-        uint32_t nCount;
-
-        m_Lock.On();
-
-        RefObj::Release(false);
-        nCount = RefObj::GetRefCount();
-
-        m_Lock.Off();
-
-        if (nCount == 0)
-                delete this;
 }
 
 TimerObj::TimerObj(uint32_t nObjID)
@@ -339,11 +171,7 @@ bool TimerObj::AddTimer(uint32_t nTimerID, void *pData, uint32_t millseconds, bo
         if (m_pTimerEngine == NULL)
                 m_pTimerEngine = TimerEngine::Instance();
 
-#ifndef _DEBUG
-        pCtx = (timer_ctx_t *)calloc(nSize);
-#else
-        pCtx = (timer_ctx_t *)_z3_calloc(sizeof(timer_ctx_t), 1, __FILE__, __LINE__);
-#endif
+        pCtx = (timer_ctx_t *)z3_calloc(sizeof(timer_ctx_t), 1);
         if (pCtx != NULL)
         {
                 pCtx->pObj = this;
@@ -358,11 +186,7 @@ bool TimerObj::AddTimer(uint32_t nTimerID, void *pData, uint32_t millseconds, bo
                 }
                 else
                 {
-#ifndef _DEBUG
-                        free(pCtx);
-#else
-                        _z3_free(pCtx);
-#endif
+                        z3_free(pCtx);
                 }
         }
 
@@ -376,9 +200,9 @@ bool TimerObj::DeleteTimer(uint32_t nTimerID)
         handle = m_mapTimerHandle[nTimerID];
 
         // if key is not found, map shall insert along with the default value of HANDLE        
-        if (handle != 0)
+        if (handle != Z3_INVALID_TIMER_HANDLE)
         {
-                assert(m_pTimerEngine != NULL);                
+                assert(m_pTimerEngine != NULL);
                 if (true == m_pTimerEngine->DeleteTimer(GetObjID(), handle))
                 {
                         m_mapTimerHandle.erase(nTimerID);
@@ -393,24 +217,4 @@ void TimerObj::OnTimer(uint32_t nTimerID, void *pData)
 {
         TRACE_WARN("Default Timer function is invokded. You should override function: %s\r\n", __FUNCTION__);
         return;
-}
-
-void* operator new(size_t size, char *filename, unsigned int line)
-{
-        return ::_z3_malloc(size, filename, line);
-}
-
-void operator delete(void* p, char *filename, unsigned int line)
-{
-        _z3_free(p);
-}
-
-void* operator new[](size_t size, char *filename, unsigned int line)
-{
-        return operator new(size, filename, line);
-}
-
-void operator delete[](void* p, char *filename, unsigned int line)
-{
-        return operator delete(p, filename, line);
 }

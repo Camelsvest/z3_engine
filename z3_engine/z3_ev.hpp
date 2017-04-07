@@ -17,15 +17,11 @@ typedef enum _ev_id
 
 typedef struct _Z3_EV_OVERLAPPED
 {
-        OVERLAPPED              ovl;
-        ev_id_t                 ev_id;
-        union
-        {
-                HANDLE          file_handle;
-                uint32_t        timer_id;
-        } handle;
-        struct __timeb64        timeout;
-        void                    *data;
+        OVERLAPPED      ovl;
+        ev_id_t         ev_id;
+        HANDLE          iocp_handle;
+        uint32_t        timer_id;
+        void            *data;
 } Z3_EV_OVL, *LPZ3_EV_OVL;
 
 //typedef struct _Z3_OVERLAPPED
@@ -58,8 +54,6 @@ typedef struct _Z3_EV
 #define CLEAN_ACT_OVL(z3ovl_pointer)            { memset(&z3ovl_pointer->act_ovl, 0, sizeof(Z3_EV_OVL)); }
 //#define CLEAN_TIMEOUT_OVL(z3ovl_pointer)        { memset(&z3ovl_pointer->timeout_ovl, 0, sizeof(Z3_EV_OVL)); }
 
-LPZ3_EV_OVL AllocZ3Ovl(HANDLE hFileHandle, ev_id_t evID, uint32_t millseconds, void *data = NULL);
-void FreeZ3Ovl(LPZ3_EV_OVL pZ3Ovl);
 
 
 #endif

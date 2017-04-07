@@ -36,19 +36,11 @@ namespace Z3 {
                 virtual void    RunOnce();
                 virtual void    OnThreadStop(void);
 
-                void    AddIntoPendingList(LPZ3_EV_OVL pOvl);
-                void    RemoveFromPendingList(LPZ3_EV_OVL pOvl);
-                void    RemoveFromPendingList(uint32_t handle);
-
                 bool    Dispatch(ev_id_t evID, LPZ3_EV_OVL pZ3Ovl, bool bTimeout = false);
 
         private:
                 HANDLE  m_hIOCP;
 
-                typedef std::list<LPZ3_EV_OVL>              Z3OVL_LIST;
-                typedef std::list<LPZ3_EV_OVL>::iterator    Z3OVL_LIST_ITERATOR;
-
-                Z3OVL_LIST      m_lstPendingOvl;
                 AsyncQueue      m_Queue;
 
                 //typedef stdext::hash_multimap<uint32_t, LPZ3_EV_OVL>    Z3OVL_HASH;

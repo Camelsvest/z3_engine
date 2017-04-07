@@ -31,7 +31,7 @@ void Executor::RunOnce()
         LPZ3_EV_OVL pZ3Ovl;
         IOCPObj *pObj;
 
-        bSucceed = m_pQueue->WaitForEV(ev, INFINITE);
+        bSucceed = m_pQueue->WaitForEV(ev, 100 /*INFINITE*/);
         if (bSucceed)
         {
                 assert(ev.id != EV_UNKNOWN);
@@ -42,7 +42,7 @@ void Executor::RunOnce()
                 pObj->Run(ev.id, pZ3Ovl->ovl.Internal, pZ3Ovl->ovl.InternalHigh, ev.timeout);
                 pObj->Unlock();
 
-                FreeZ3Ovl(pZ3Ovl);                
+                pObj->FreeZ3Ovl(pZ3Ovl);                
         }
 }
 
