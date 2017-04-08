@@ -31,8 +31,8 @@ namespace Z3 {
                 virtual ~Connector();
 
                 int     Connect(uint32_t nTimeout /*Millseconds*/);
-                virtual int     OnConnect(uint32_t nErrorCode, bool bExpired) = 0;
-                virtual int     OnEvCompleted(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes, bool bExpired);
+                virtual int     OnConnect(uint32_t nStatusCode, bool bExpired);
+                virtual int     OnEvCompleted(ev_id_t evID, uint32_t nStatusCode, uint32_t nBytes, bool bExpired);
                 virtual int     OnEvRead(uint32_t nErrorCode, uint32_t nBytes, bool bExpired);
                 virtual int     OnEvWrite(uint32_t nErrorCode, uint32_t nBytes, bool bExpired);
 

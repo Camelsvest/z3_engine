@@ -67,24 +67,41 @@ int Connector::Run(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes, bool bExp
 {
         int nResult = Z3_EOK;
 
-        switch (m_ConnState)
+        switch (evID)
         {
-        case CONN_UNCONNECTED:
+        case EV_INSTANCE_START:
+                assert(m_ConnState == CONN_UNCONNECTED);
                 if (m_pszHost && m_nPort > 0)
                         nResult = Connect(SOCKET_CONNECTING_TIMEOUT);
                 break;
-        case CONN_CONNECTING:
-                assert(evID == EV_CONNECT);
-                nResult = OnConnect(nErrorCode, bExpired);
-                if (nResult == Z3_EOK && !bExpired)
-                        m_ConnState = CONN_CONNECTED;
+
+        case EV_INSTANCE_STOP:
+                // ...
                 break;
-        case CONN_CONNECTED:
+
+        default:
                 nResult = OnEvCompleted(evID, nErrorCode, nBytes, bExpired);
                 break;
-        default:
-                break;
         }
+
+        //switch (m_ConnState)
+        //{
+        //case CONN_UNCONNECTED:
+        //        if (m_pszHost && m_nPort > 0)
+        //                nResult = Connect(SOCKET_CONNECTING_TIMEOUT);
+        //        break;
+        //case CONN_CONNECTING:
+        //        assert(evID == EV_CONNECT);
+        //        nResult = OnConnect(nErrorCode, bExpired);
+        //        if (nResult == Z3_EOK && !bExpired)
+        //                m_ConnState = CONN_CONNECTED;
+        //        break;
+        //case CONN_CONNECTED:
+        //        nResult = OnEvCompleted(evID, nErrorCode, nBytes, bExpired);
+        //        break;
+        //default:
+        //        break;
+        //}
 
         return nResult;
 }
@@ -245,17 +262,20 @@ int Connector::StartRead(uint32_t nTimeout /*Millseconds*/)
         return nError;
 }
 
-int Connector::OnEvCompleted(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes, bool bExpired)
+int Connector::OnEvCompleted(ev_id_t evID, uint32_t nStatusCode, uint32_t nBytes, bool bExpired)
 {
         int nError = Z3_EOK;
 
         switch(evID)
         {
         case EV_READ:
-                nError = OnEvRead(nErrorCode, nBytes, bExpired);
+                nError = OnEvRead(nStatusCode, nBytes, bExpired);
                 break;
         case EV_WRITE:
-                nError = OnEvWrite(nErrorCode, nBytes, bExpired);
+                nError = OnEvWrite(nStatusCode, nBytes, bExpired);
+                break;
+        case EV_CONNECT:
+                nError = OnConnect(nStatusCode, bExpired);
                 break;
         default:
                 assert(false);
@@ -263,6 +283,19 @@ int Connector::OnEvCompleted(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes,
         }
 
         return nError;
+}
+
+int Connector::OnConnect(uint32_t nStatusCode, bool bExpired)
+{
+        HRESULT hr;
+
+        hr = HRESULT_FROM_NT(nStatusCode);
+        if (SUCCEEDED(hr))
+        {
+
+        }
+
+        return 0;
 }
 
 int Connector::OnEvRead(uint32_t nErrorCode, uint32_t nBytes, bool bExpired)

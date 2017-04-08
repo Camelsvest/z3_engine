@@ -20,7 +20,7 @@ typedef struct _Z3_EV_OVERLAPPED
         OVERLAPPED      ovl;
         ev_id_t         ev_id;
         HANDLE          iocp_handle;
-        uint32_t        timer_id;
+        HANDLE          timer;
         void            *data;
 } Z3_EV_OVL, *LPZ3_EV_OVL;
 
@@ -42,7 +42,7 @@ typedef struct _Z3_EV
         void    *data;
 } Z3EV, *LPZ3EV;
 
-#define ACT_OVL_ADDR(z3ovl_pointer)                     ((LPOVERLAPPED)(&(z3ovl_pointer->act_ovl)))
+#define ACT_OVL_ADDR(z3ovl_pointer)                     ((LPOVERLAPPED)(&(z3ovl_pointer->ovl)))
 //#define TIMEOUT_OVL_ADDR(z3ovl_pointer)                 (LPOVERLAPPED)((char *)z3ovl_pointer + sizeof(Z3_EV_OVL))
 //#define Z3OVL_ADDR_FROM_TIMEOUTOVL(timeout_ovl_pointer) (LPZ3OVL)((char *)timeout_ovl_pointer - sizeof(Z3_EV_OVL))
 //#define Z3OVL_ADDR_FROM_ACTOVL(act_ovl_pointer)         (LPZ3OVL)(act_ovl_pointer)

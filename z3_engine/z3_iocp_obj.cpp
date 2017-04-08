@@ -39,11 +39,13 @@ int IOCPObj::SocketAsyncConnect(SOCKET hSocket, SOCKADDR_IN *pTarget, uint32_t n
         if (pZ3Ovl == NULL)
                 return Z3_ENOMEM;
 
-        AddIntoPendingList(pZ3Ovl);
+        TRACE_DETAIL("Allocating Z3Ovl(0x%p) to connect host.\r\n", pZ3Ovl);
+
+        /*AddIntoPendingList(pZ3Ovl);*/
 
         bOK = lpfnConnectEx(hSocket, (struct sockaddr *)pTarget, sizeof(SOCKADDR_IN),
                 NULL, NULL, NULL, (LPOVERLAPPED)pZ3Ovl);
-                if (!bOK)
+        if (!bOK)
         {
                 nError = ::WSAGetLastError();
                 if (nError != WSA_IO_PENDING)
@@ -70,7 +72,7 @@ int IOCPObj::SocketAsyncTCPRead(SOCKET hSocket, uint32_t nMillseconds, WSABUF *p
         if (pZ3Ovl == NULL)
                 return Z3_ENOMEM;
 
-        AddIntoPendingList(pZ3Ovl);
+        /*AddIntoPendingList(pZ3Ovl);*/
 
         dwFlags = 0;
         nError = ::WSARecv(hSocket, pwsaBuf, 1, &dwRecvBytes, &dwFlags, (LPOVERLAPPED)pZ3Ovl, NULL);
@@ -101,7 +103,7 @@ int IOCPObj::SocketAsyncTCPWrite(SOCKET hSocket, uint32_t nMillseconds, WSABUF *
         if (pZ3Ovl == NULL)
                 return Z3_ENOMEM;
 
-        AddIntoPendingList(pZ3Ovl);
+        /*AddIntoPendingList(pZ3Ovl);*/
 
         dwFlags = 0;
         nError = ::WSASend(hSocket, pwsaBuf, 1, &dwSendBytes, dwFlags, (LPOVERLAPPED)pZ3Ovl, NULL);
@@ -132,7 +134,7 @@ int IOCPObj::SocketAsyncUDPRead(SOCKET hSocket, uint32_t nMillseconds, WSABUF *p
         if (pZ3Ovl == NULL)
                 return Z3_ENOMEM;
 
-        AddIntoPendingList(pZ3Ovl);
+        /*AddIntoPendingList(pZ3Ovl);*/
 
         nError = ::WSARecvFrom(hSocket, pwsaBuf, 1, &dwRecvBytes, &dwFlags, pSockAddr,
                 pnAddrSize, (LPOVERLAPPED)pZ3Ovl, NULL);
@@ -155,43 +157,40 @@ int IOCPObj::SocketAsyncUDPWrite(SOCKET hSocket, uint32_t nMillseconds, WSABUF *
         return Z3_EOK;
 }
 
-int IOCPObj::AddTimer(uint32_t nTimerID, uint32_t nMillseconds)
-{
-        if (true == TimerObj::AddTimer(nTimerID, this, nMillseconds, false))
-                return Z3_EOK;
-        else
-                return Z3_ERROR;
-}
+//int IOCPObj::AddTimer(uint32_t nTimerID, uint32_t nMillseconds)
+//{
+//        if (true == TimerObj::AddTimer(nTimerID, this, nMillseconds, false))
+//                return Z3_EOK;
+//        else
+//                return Z3_ERROR;
+//}
 
-int IOCPObj::RemoveTimer(uint32_t nTimerID)
-{
-        if (true == TimerObj::DeleteTimer(nTimerID))
-                return Z3_EOK;
-        else
-                return Z3_ERROR;
-}
+//int IOCPObj::RemoveTimer(uint32_t nTimerID)
+//{
+//        if (true == TimerObj::DeleteTimer(nTimerID))
+//                return Z3_EOK;
+//        else
+//                return Z3_ERROR;
+//}
 
 LPZ3_EV_OVL IOCPObj::AllocZ3Ovl(HANDLE hFileHandle, ev_id_t evID, uint32_t millseconds)
 {
-        uint32_t result;
         LPZ3_EV_OVL pOvl;
 
         pOvl = (LPZ3_EV_OVL)z3_calloc(1, sizeof(Z3_EV_OVL));
         if (!pOvl)
                 return NULL;
 
-        if (millseconds > 0)
+        if (millseconds > 0  && millseconds < INFINITE)
         {
-                pOvl->timer_id = Z3::TimerEngine::CreateTimerID();
-                result = AddTimer(pOvl->timer_id, millseconds);
-                if (result != Z3_EOK)
+                if (!AddTimer(&pOvl->timer, pOvl, millseconds))
                 {
                         z3_free(pOvl);
                         return NULL;
                 }
         }
         else
-                pOvl->timer_id = Z3_INVALID_TIMER_ID;
+                pOvl->timer = INVALID_HANDLE_VALUE;
 
         pOvl->iocp_handle = hFileHandle;
 
@@ -208,11 +207,17 @@ void IOCPObj::FreeZ3Ovl(LPZ3_EV_OVL pOvl)
 
 int IOCPObj::Start(void)
 {
-        //int             nError;
-        //LPZ3_EV_OVL     pZ3Ovl;
+        BOOL            bOK;
+        LPZ3_EV_OVL     pZ3Ovl;
+
+        // pZ3Ovl 内存的删除，由z3_engine负责
+        pZ3Ovl = AllocZ3Ovl(NULL, EV_INSTANCE_START, 0);
+        assert(pZ3Ovl);
+
+        TRACE_DETAIL("Allocating Z3Ovl(0x%p) to start IOCP object.\r\n", pZ3Ovl);
 
         // 投递一个“空”事件（实际上是随便投递一个事件），让IOCP启动，自动开始Dispatch，对象运行；
-        /*bOK = ::PostQueuedCompletionStatus(m_hIOCP, 0, GetObjID(), ACT_OVL_ADDR(pZ3Ovl));
+        bOK = ::PostQueuedCompletionStatus(m_hIOCP, 0, GetObjID(), ACT_OVL_ADDR(pZ3Ovl));
         if (!bOK)
         {
                 TRACE_ERROR("Failed to invoke function PostQueuedCompletionStatus in connector object 0x%p, function %s, file %s, line %d\r\n",
@@ -220,7 +225,7 @@ int IOCPObj::Start(void)
 
                 FreeZ3Ovl(pZ3Ovl);
                 return Z3_SYS_ERROR;
-        }*/
+        }
 
         return 0;        
 }
@@ -233,16 +238,22 @@ void IOCPObj::AddIntoPendingList(LPZ3_EV_OVL pOvl)
         Unlock();
 }
 
-void IOCPObj::OnTimer(uint32_t nTimerID, void *pData)
+void IOCPObj::OnTimer(void *pData)
 {
         LPZ3_EV_OVL     pZ3Ovl;
-        IOCPObj         *pObj;
 
-        pObj = static_cast<IOCPObj *>(pData);
-        assert(pObj != NULL);
+	pZ3Ovl = static_cast<LPZ3_EV_OVL>(pData);
+        assert(pZ3Ovl != NULL);
+	assert(pZ3Ovl->iocp_handle != INVALID_HANDLE_VALUE);
 
-        pObj->Lock();
-        //::CancelIoEx(pObj->)
+        /*
+  	 * 两种情况
+	 * 1. 成功了，IO被取消，Z3_ENGINE中响应IO，并判断处理
+	 * 2. 失败了，意味着IO正在进行中，无法取消，显然Z3_ENGINE可以继续处理IO事件
+	 *
+	 * 我们保障TIMER中的操作时间尽量短，大部分工作在Z3_ENGINE中触发完成
+	 */
+	::CancelIoEx(pZ3Ovl->iocp_handle, (LPOVERLAPPED)pZ3Ovl);
 
-
+	return;
 }

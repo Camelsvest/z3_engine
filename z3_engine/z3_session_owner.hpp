@@ -1,7 +1,7 @@
 #ifndef _Z3_SESSION_OWNER_HPP_
 #define _Z3_SESSION_OWNER_HPP_
 
-#include "z3_obj.hpp"
+#include "z3_async_obj.hpp"
 
 namespace Z3 {
 

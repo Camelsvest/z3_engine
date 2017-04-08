@@ -14,10 +14,10 @@ namespace Z3 {
         public:
                 RefObj();
 
-                inline uint32_t GetRefCount();
+                uint32_t GetRefCount();
 
-                inline uint32_t AddRef();
-                inline void     Release(bool bFree = true);
+                uint32_t AddRef();
+                void     Release(bool bFree = true);
 
         protected:
                 virtual ~RefObj();

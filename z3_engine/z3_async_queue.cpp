@@ -27,13 +27,13 @@ AsyncQueue::~AsyncQueue()
 }
 
 
-void AsyncQueue::Push(ev_id_t evID, bool bTimeout, void *pData)
+void AsyncQueue::Push(ev_id_t evID, void *pData)
 {
         DWORD   dwResult;
         Z3EV    ev;
 
         ev.id = evID;
-        ev.timeout = bTimeout;
+        ev.timeout = false;
         ev.data = pData;
 
         dwResult = ::WaitForSingleObject(m_hMutex, INFINITE);

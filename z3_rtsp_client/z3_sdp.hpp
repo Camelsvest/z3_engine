@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <string>
-#include "z3_obj.hpp"
+#include "z3_async_obj.hpp"
 
 namespace Z3 {
 

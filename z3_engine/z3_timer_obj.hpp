@@ -19,8 +19,8 @@ namespace Z3 {
                 static void             Destroy();
                 static uint32_t         CreateTimerID();
 
-                HANDLE  AddTimer(PVOID lpParameter, uint32_t millseconds, bool bRepeat = false);
-                bool    DeleteTimer(uint32_t nObjID, HANDLE hTimer);
+                HANDLE  AddTimer(LPHANDLE phTimer, PVOID lpParameter, uint32_t millseconds, bool bRepeat = false);
+                bool    DeleteTimer(HANDLE hTimer);
 
         protected:
                 TimerEngine();
@@ -41,17 +41,16 @@ namespace Z3 {
         public:
                 TimerObj(uint32_t nObjID = INVALID_OBJ_ID);
 
-                bool AddTimer(uint32_t nTimerID, void *pData, uint32_t millseconds, bool bRepeat = false);
-                bool DeleteTimer(uint32_t nTimerID);
+                bool AddTimer(LPHANDLE phTimer, void *pData, uint32_t millseconds, bool bRepeat = false);
+                bool DeleteTimer(HANDLE hTimer);
 
-                virtual void    OnTimer(uint32_t nTimerID, void *pData);
+                virtual void    OnTimer(void *pData);
 
         protected:
                 virtual ~TimerObj();
 
         private:
                 TimerEngine *m_pTimerEngine;
-                std::map<uint32_t, HANDLE> m_mapTimerHandle;
         };
 };
 

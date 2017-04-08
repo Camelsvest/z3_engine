@@ -26,6 +26,8 @@ int Client::Start()
         SYSTEM_INFO     SysInfo;
         int             nError;
 
+        TRACE_ENTER_FUNCTION;
+
         OnClientStart();
 
         m_pEngine = new Engine(Z3_ENGINE_ID);
@@ -43,6 +45,8 @@ int Client::Start()
         nError = m_ExecutorPool.Init(pQueue, SysInfo.dwNumberOfProcessors * THREAD_NUM_FACTOR_PER_CPU);
         if (!nError)
                 m_bStarted = true;
+
+        TRACE_EXIT_FUNCTION;
 
         return nError;
 }

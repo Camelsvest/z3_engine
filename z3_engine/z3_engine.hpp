@@ -36,7 +36,7 @@ namespace Z3 {
                 virtual void    RunOnce();
                 virtual void    OnThreadStop(void);
 
-                bool    Dispatch(ev_id_t evID, LPZ3_EV_OVL pZ3Ovl, bool bTimeout = false);
+                bool    Dispatch(ev_id_t evID, LPZ3_EV_OVL pZ3Ovl);
 
         private:
                 HANDLE  m_hIOCP;

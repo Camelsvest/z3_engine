@@ -9,7 +9,7 @@ namespace Z3 {
                 AsyncQueue();
                 virtual ~AsyncQueue();
 
-                void    Push(ev_id_t evID, bool bTimeout, void *pData);
+                void    Push(ev_id_t evID, void *pData);
                 void*   Pop(ev_id_t &evID);
 
                 bool    Signal(bool bOK = true);

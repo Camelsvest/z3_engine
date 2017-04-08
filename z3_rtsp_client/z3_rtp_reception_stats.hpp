@@ -1,7 +1,7 @@
 #ifndef _Z3_RTP_RECEPTION_STATS_HPP_
 #define _Z3_RTP_RECEPTION_STATS_HPP_
 
-#include "z3_obj.hpp"
+#include "z3_async_obj.hpp"
 #include "z3_rtcp_msg.hpp"
 
 namespace Z3 {

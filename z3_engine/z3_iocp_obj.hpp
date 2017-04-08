@@ -23,17 +23,17 @@ namespace Z3 {
                 int Start(void);
 
                 virtual int     Run(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes, bool bExpired = false) = 0;
-                virtual void    OnTimer(uint32_t nTimerID, void *pData);
+                virtual void    OnTimer(void *pData);
 
         protected:
                 virtual ~IOCPObj();
 
-                int     AddTimer(uint32_t nTimerID, uint32_t nMillseconds);
-                int     RemoveTimer(uint32_t nTimerID);
+                //int     AddTimer(uint32_t nTimerID, uint32_t nMillseconds);
+                //int     RemoveTimer(uint32_t nTimerID);
 
         private:
                 LPZ3_EV_OVL     AllocZ3Ovl(HANDLE hFileHandle, ev_id_t evID, uint32_t millseconds);
-                inline void     FreeZ3Ovl(LPZ3_EV_OVL pOvl);
+                void            FreeZ3Ovl(LPZ3_EV_OVL pOvl);
 
                 inline void     AddIntoPendingList(LPZ3_EV_OVL pOvl);
 
