@@ -8,7 +8,7 @@ using namespace Z3;
 #endif
 
 Connector::Connector(HANDLE hIOCP, uint32_t nObjID)
-        : IOCPObj(hIOCP, nObjID)
+        : SocketObj(hIOCP, nObjID)
         , m_hSocket(INVALID_SOCKET)
         , m_ConnState(CONN_UNCONNECTED)
         , m_pRecvBuf(NULL)
@@ -61,49 +61,6 @@ bool Connector::SetDestination(const char *pszHost, uint16_t nPort)
         m_nPort = nPort;
 
         return true;
-}
-
-int Connector::Run(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes, bool bExpired)
-{
-        int nResult = Z3_EOK;
-
-        switch (evID)
-        {
-        case EV_INSTANCE_START:
-                assert(m_ConnState == CONN_UNCONNECTED);
-                if (m_pszHost && m_nPort > 0)
-                        nResult = Connect(SOCKET_CONNECTING_TIMEOUT);
-                break;
-
-        case EV_INSTANCE_STOP:
-                // ...
-                break;
-
-        default:
-                nResult = OnEvCompleted(evID, nErrorCode, nBytes, bExpired);
-                break;
-        }
-
-        //switch (m_ConnState)
-        //{
-        //case CONN_UNCONNECTED:
-        //        if (m_pszHost && m_nPort > 0)
-        //                nResult = Connect(SOCKET_CONNECTING_TIMEOUT);
-        //        break;
-        //case CONN_CONNECTING:
-        //        assert(evID == EV_CONNECT);
-        //        nResult = OnConnect(nErrorCode, bExpired);
-        //        if (nResult == Z3_EOK && !bExpired)
-        //                m_ConnState = CONN_CONNECTED;
-        //        break;
-        //case CONN_CONNECTED:
-        //        nResult = OnEvCompleted(evID, nErrorCode, nBytes, bExpired);
-        //        break;
-        //default:
-        //        break;
-        //}
-
-        return nResult;
 }
 
 int Connector::Connect(uint32_t nTimeout /*Millseconds*/)
@@ -159,7 +116,7 @@ int Connector::Connect(uint32_t nTimeout /*Millseconds*/)
 
         m_ConnState = CONN_CONNECTING;
 
-        nError = SocketAsyncConnect(m_hSocket, &target, nTimeout);
+        nError = AsyncConnect(m_hSocket, &target, nTimeout);
 
         TRACE_EXIT_FUNCTION;
         return nError;
@@ -241,7 +198,7 @@ int Connector::WriteMsg(const char *pBuf, uint32_t nSize)
         m_wsaSendBuf.len = nSize;
 
         assert(m_hSocket != INVALID_SOCKET);
-        nError = SocketAsyncTCPWrite(m_hSocket, SOCKET_WRITE_TIMEOUT, &m_wsaSendBuf);
+        nError = AsyncTCPWrite(m_hSocket, SOCKET_WRITE_TIMEOUT, &m_wsaSendBuf);
 
         TRACE_EXIT_FUNCTION;
         return nError;
@@ -255,11 +212,31 @@ int Connector::StartRead(uint32_t nTimeout /*Millseconds*/)
 
         assert(m_hSocket != INVALID_SOCKET);
         memset(m_wsaRecvBuf.buf, 0, m_wsaRecvBuf.len);
-        nError = SocketAsyncTCPRead(m_hSocket, SOCKET_READ_TIMEOUT, &m_wsaRecvBuf);
+        nError = AsyncTCPRead(m_hSocket, SOCKET_READ_TIMEOUT, &m_wsaRecvBuf);
 
         TRACE_EXIT_FUNCTION;
 
         return nError;
+}
+
+int Connector::OnStart()
+{
+        int nResult = Z3_EOK;
+
+        assert(m_ConnState == CONN_UNCONNECTED);
+        if (m_pszHost && m_nPort > 0)
+                nResult = Connect(SOCKET_CONNECTING_TIMEOUT);
+
+        return nResult;
+}
+
+int Connector::OnStop()
+{
+        int nResult = Z3_EOK;
+
+        assert(false);
+
+        return nResult;
 }
 
 int Connector::OnEvCompleted(ev_id_t evID, uint32_t nStatusCode, uint32_t nBytes, bool bExpired)

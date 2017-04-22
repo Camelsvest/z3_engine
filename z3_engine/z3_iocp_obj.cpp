@@ -18,224 +18,65 @@ IOCPObj::~IOCPObj()
 {
 }
 
-int IOCPObj::SocketAsyncConnect(SOCKET hSocket, SOCKADDR_IN *pTarget, uint32_t nMillseconds)
+
+inline int IOCPObj::PostCompletionStatus(LPOVERLAPPED pOvl)
 {
-        int             nError;
-        DWORD           dwBytes;
-        LPFN_CONNECTEX  lpfnConnectEx;
-        LPZ3_EV_OVL     pZ3Ovl;
-        BOOL            bOK;
-        GUID            GuidConnectEx = WSAID_CONNECTEX;
+        BOOL bOK;
 
-        if (hSocket == INVALID_SOCKET)
-                return Z3_EINVAL;
-
-        nError = ::WSAIoctl(hSocket, SIO_GET_EXTENSION_FUNCTION_POINTER, &GuidConnectEx, sizeof(GuidConnectEx),
-                &lpfnConnectEx, sizeof(lpfnConnectEx), &dwBytes, 0, 0);
-        assert(nError != SOCKET_ERROR);
-
-        // pZ3Ovl 内存的删除，由z3_engine负责
-        pZ3Ovl = AllocZ3Ovl((HANDLE)hSocket, EV_CONNECT, nMillseconds);
-        if (pZ3Ovl == NULL)
-                return Z3_ENOMEM;
-
-        TRACE_DETAIL("Allocating Z3Ovl(0x%p) to connect host.\r\n", pZ3Ovl);
-
-        /*AddIntoPendingList(pZ3Ovl);*/
-
-        bOK = lpfnConnectEx(hSocket, (struct sockaddr *)pTarget, sizeof(SOCKADDR_IN),
-                NULL, NULL, NULL, (LPOVERLAPPED)pZ3Ovl);
+        bOK = ::PostQueuedCompletionStatus(m_hIOCP, 0, GetObjID(), pOvl);
         if (!bOK)
         {
-                nError = ::WSAGetLastError();
-                if (nError != WSA_IO_PENDING)
-                {
-                        TRACE_ERROR("Failed to invoke function ConnectEx, error code is %d\r\n", nError);
-                        return EWSABASE + nError;
-                }
+                TRACE_ERROR("Failed to invoke function PostQueuedCompletionStatus in IOCP object 0x%p, function %s, file %s, line %d\r\n",
+                        this, __FUNCTION__, __FILE__, __LINE__);
+
+                return Z3_SYS_ERROR;
         }
 
         return Z3_EOK;
-}
-
-int IOCPObj::SocketAsyncTCPRead(SOCKET hSocket, uint32_t nMillseconds, WSABUF *pwsaBuf)
-{
-        int     nError;
-        LPZ3_EV_OVL pZ3Ovl;
-        DWORD   dwRecvBytes, dwFlags;
-
-        if (hSocket == INVALID_SOCKET || pwsaBuf == NULL)
-                return Z3_EINVAL;
-
-        // pZ3Ovl 内存的删除，由z3_engine负责
-        pZ3Ovl = AllocZ3Ovl((HANDLE)hSocket, EV_READ, SOCKET_READ_TIMEOUT);
-        if (pZ3Ovl == NULL)
-                return Z3_ENOMEM;
-
-        /*AddIntoPendingList(pZ3Ovl);*/
-
-        dwFlags = 0;
-        nError = ::WSARecv(hSocket, pwsaBuf, 1, &dwRecvBytes, &dwFlags, (LPOVERLAPPED)pZ3Ovl, NULL);
-        if (nError == SOCKET_ERROR)
-        {
-                nError = ::WSAGetLastError();
-                if (nError != WSA_IO_PENDING)
-                {
-                        TRACE_ERROR("WSARecv failed, error code is %d\r\n", nError);
-                        return EWSABASE + nError;
-                }
-        }
-
-        return Z3_EOK;
-}
-
-int IOCPObj::SocketAsyncTCPWrite(SOCKET hSocket, uint32_t nMillseconds, WSABUF *pwsaBuf)
-{
-        DWORD           dwSendBytes, dwFlags;
-        int             nError;
-        LPZ3_EV_OVL     pZ3Ovl;
-
-        if (hSocket == INVALID_SOCKET || pwsaBuf == NULL || pwsaBuf->len <= 0)
-                return Z3_EINVAL;
-
-        // pZ3Ovl 内存的删除，由z3_engine负责
-        pZ3Ovl = AllocZ3Ovl((HANDLE)hSocket, EV_WRITE, SOCKET_WRITE_TIMEOUT);
-        if (pZ3Ovl == NULL)
-                return Z3_ENOMEM;
-
-        /*AddIntoPendingList(pZ3Ovl);*/
-
-        dwFlags = 0;
-        nError = ::WSASend(hSocket, pwsaBuf, 1, &dwSendBytes, dwFlags, (LPOVERLAPPED)pZ3Ovl, NULL);
-        if (SOCKET_ERROR == nError)
-        {
-                nError = ::WSAGetLastError();
-                if (nError != WSA_IO_PENDING)
-                {
-                        TRACE_ERROR("WSASend failed, error code is %d\r\n", nError);
-                        return EWSABASE + nError;
-                }
-        }
-
-        return Z3_EOK;
-}
-
-int IOCPObj::SocketAsyncUDPRead(SOCKET hSocket, uint32_t nMillseconds, WSABUF *pwsaBuf, SOCKADDR *pSockAddr, int *pnAddrSize)
-{
-        int     nError;
-        LPZ3_EV_OVL pZ3Ovl;
-        DWORD   dwRecvBytes, dwFlags;
-
-        if (hSocket == INVALID_SOCKET || pwsaBuf == NULL)
-                return Z3_EINVAL;
-
-        // pZ3Ovl 内存的删除，由z3_engine负责
-        pZ3Ovl = AllocZ3Ovl((HANDLE)hSocket, EV_READ, SOCKET_READ_TIMEOUT);
-        if (pZ3Ovl == NULL)
-                return Z3_ENOMEM;
-
-        /*AddIntoPendingList(pZ3Ovl);*/
-
-        nError = ::WSARecvFrom(hSocket, pwsaBuf, 1, &dwRecvBytes, &dwFlags, pSockAddr,
-                pnAddrSize, (LPOVERLAPPED)pZ3Ovl, NULL);
-        if (nError == SOCKET_ERROR)
-        {
-                nError = ::WSAGetLastError();
-                if (nError != WSA_IO_PENDING)
-                {
-                        TRACE_ERROR("WSARecv failed, error code is %d\r\n", nError);
-                        return EWSABASE + nError;
-                }
-        }
-
-        return Z3_EOK;
-}
-
-int IOCPObj::SocketAsyncUDPWrite(SOCKET hSocket, uint32_t nMillseconds, WSABUF *pwsaBuf)
-{
-        assert(false);
-        return Z3_EOK;
-}
-
-//int IOCPObj::AddTimer(uint32_t nTimerID, uint32_t nMillseconds)
-//{
-//        if (true == TimerObj::AddTimer(nTimerID, this, nMillseconds, false))
-//                return Z3_EOK;
-//        else
-//                return Z3_ERROR;
-//}
-
-//int IOCPObj::RemoveTimer(uint32_t nTimerID)
-//{
-//        if (true == TimerObj::DeleteTimer(nTimerID))
-//                return Z3_EOK;
-//        else
-//                return Z3_ERROR;
-//}
-
-LPZ3_EV_OVL IOCPObj::AllocZ3Ovl(HANDLE hFileHandle, ev_id_t evID, uint32_t millseconds)
-{
-        LPZ3_EV_OVL pOvl;
-
-        pOvl = (LPZ3_EV_OVL)z3_calloc(1, sizeof(Z3_EV_OVL));
-        if (!pOvl)
-                return NULL;
-
-        if (millseconds > 0  && millseconds < INFINITE)
-        {
-                if (!AddTimer(&pOvl->timer, pOvl, millseconds))
-                {
-                        z3_free(pOvl);
-                        return NULL;
-                }
-        }
-        else
-                pOvl->timer = INVALID_HANDLE_VALUE;
-
-        pOvl->iocp_handle = hFileHandle;
-
-        pOvl->ev_id = evID;
-        pOvl->data = this;
-
-        return pOvl;
-}
-
-void IOCPObj::FreeZ3Ovl(LPZ3_EV_OVL pOvl)
-{
-        z3_free(pOvl);
 }
 
 int IOCPObj::Start(void)
 {
-        BOOL            bOK;
+        int             iRet;
         LPZ3_EV_OVL     pZ3Ovl;
 
         // pZ3Ovl 内存的删除，由z3_engine负责
-        pZ3Ovl = AllocZ3Ovl(NULL, EV_INSTANCE_START, 0);
+        pZ3Ovl = AllocZ3Ovl(EV_INSTANCE_START, 0);
         assert(pZ3Ovl);
 
         TRACE_DETAIL("Allocating Z3Ovl(0x%p) to start IOCP object.\r\n", pZ3Ovl);
 
-        // 投递一个“空”事件（实际上是随便投递一个事件），让IOCP启动，自动开始Dispatch，对象运行；
-        bOK = ::PostQueuedCompletionStatus(m_hIOCP, 0, GetObjID(), ACT_OVL_ADDR(pZ3Ovl));
-        if (!bOK)
+        // 投递一个“EV_INSTANCE_START”事件，让IOCP启动，自动开始Dispatch，对象运行；
+        iRet = PostCompletionStatus(ACT_OVL_ADDR(pZ3Ovl));
+        if (iRet != Z3_EOK)
         {
-                TRACE_ERROR("Failed to invoke function PostQueuedCompletionStatus in connector object 0x%p, function %s, file %s, line %d\r\n",
-                        this, __FUNCTION__, __FILE__, __LINE__);
-
                 FreeZ3Ovl(pZ3Ovl);
-                return Z3_SYS_ERROR;
+                TRACE_DETAIL("Free Z3Ovl(0x%p) because failing to post completion status.\r\n", pZ3Ovl);
         }
 
-        return 0;        
+        return iRet;
 }
 
-
-void IOCPObj::AddIntoPendingList(LPZ3_EV_OVL pOvl)
+int IOCPObj::Stop(void)
 {
-        Lock();
-        m_lstPendingZ3Ovl.push_front(pOvl);
-        Unlock();
+        int             iRet;
+        LPZ3_EV_OVL     pZ3Ovl;
+
+        // pZ3Ovl 内存的删除，由z3_engine负责
+        pZ3Ovl = AllocZ3Ovl(EV_INSTANCE_STOP, 0);
+        assert(pZ3Ovl);
+
+        TRACE_DETAIL("Allocating Z3Ovl(0x%p) to start IOCP object.\r\n", pZ3Ovl);
+
+        // 投递一个“EV_INSTANCE_STOP”事件，让IOCP启动，自动开始Dispatch，对象运行；
+        iRet = PostCompletionStatus(ACT_OVL_ADDR(pZ3Ovl));
+        if (iRet != Z3_EOK)
+        {
+                FreeZ3Ovl(pZ3Ovl);
+                TRACE_DETAIL("Free Z3Ovl(0x%p) because failing to post completion status.\r\n", pZ3Ovl);
+        }
+
+        return iRet;
 }
 
 void IOCPObj::OnTimer(void *pData)
@@ -256,4 +97,26 @@ void IOCPObj::OnTimer(void *pData)
 	::CancelIoEx(pZ3Ovl->iocp_handle, (LPOVERLAPPED)pZ3Ovl);
 
 	return;
+}
+
+int IOCPObj::Run(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes, bool bExpired)
+{
+        int nResult = Z3_EOK;
+
+        switch (evID)
+        {
+        case EV_INSTANCE_START:
+                nResult = OnStart();
+                break;
+
+        case EV_INSTANCE_STOP:
+                nResult = OnStop();
+                break;
+
+        default:
+                nResult = OnEvCompleted(evID, nErrorCode, nBytes, bExpired);
+                break;
+        }
+
+        return nResult;
 }

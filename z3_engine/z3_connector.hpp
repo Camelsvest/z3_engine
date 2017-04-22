@@ -1,13 +1,13 @@
 #ifndef _Z3_CONNECTOR_HPP_
 #define _Z3_CONNECTOR_HPP_
 
-#include "z3_iocp_obj.hpp"
+#include "z3_socket_obj.hpp"
 #include "z3_msg.hpp"
 #include "z3_proto_parser.hpp"
 
 namespace Z3 {
 
-        class Connector : public IOCPObj
+        class Connector : public SocketObj
         {
         public:
                 Connector(HANDLE hIOCP, uint32_t nObjID = INVALID_OBJ_ID);
@@ -17,8 +17,6 @@ namespace Z3 {
 
                 inline char*            GetRecvBuffer() { return m_pRecvBuf; }
                 inline unsigned int     GetRecvBufSize() { return m_nRecvBufSize; }
-
-                virtual int     Run(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes, bool bExpired = false);
 
         protected:
                 typedef enum _CONNECTOR_STATE
@@ -30,9 +28,12 @@ namespace Z3 {
 
                 virtual ~Connector();
 
+                virtual int     OnEvCompleted(ev_id_t evID, uint32_t nStatusCode, uint32_t nBytes, bool bExpired);
+                virtual int     OnStart();
+                virtual int     OnStop();
+
                 int     Connect(uint32_t nTimeout /*Millseconds*/);
                 virtual int     OnConnect(uint32_t nStatusCode, bool bExpired);
-                virtual int     OnEvCompleted(ev_id_t evID, uint32_t nStatusCode, uint32_t nBytes, bool bExpired);
                 virtual int     OnEvRead(uint32_t nErrorCode, uint32_t nBytes, bool bExpired);
                 virtual int     OnEvWrite(uint32_t nErrorCode, uint32_t nBytes, bool bExpired);
 

@@ -79,6 +79,12 @@
     <ClInclude Include="z3_async_obj.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="z3_io_endpoint.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="z3_socket_obj.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="z3_engine.cpp">
@@ -127,6 +133,12 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="z3_async_obj.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="z3_io_endpoint.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="z3_socket_obj.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

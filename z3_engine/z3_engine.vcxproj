@@ -88,6 +88,7 @@
     <ClInclude Include="z3_executor.hpp" />
     <ClInclude Include="z3_executor_pool.hpp" />
     <ClInclude Include="z3_iocp_obj.hpp" />
+    <ClInclude Include="z3_io_endpoint.hpp" />
     <ClInclude Include="z3_memory_obj.hpp" />
     <ClInclude Include="z3_msg.hpp" />
     <ClInclude Include="z3_async_obj.hpp" />
@@ -95,6 +96,7 @@
     <ClInclude Include="z3_proto_parser.hpp" />
     <ClInclude Include="z3_ref_obj.hpp" />
     <ClInclude Include="z3_session_owner.hpp" />
+    <ClInclude Include="z3_socket_obj.hpp" />
     <ClInclude Include="z3_thread.hpp" />
     <ClInclude Include="z3_timer_obj.hpp" />
     <ClInclude Include="z3_udp_session.hpp" />
@@ -107,12 +109,14 @@
     <ClCompile Include="z3_executor.cpp" />
     <ClCompile Include="z3_executor_pool.cpp" />
     <ClCompile Include="z3_iocp_obj.cpp" />
+    <ClCompile Include="z3_io_endpoint.cpp" />
     <ClCompile Include="z3_memory_obj.cpp" />
     <ClCompile Include="z3_msg.cpp" />
     <ClCompile Include="z3_async_obj.cpp" />
     <ClCompile Include="z3_proto_parser.cpp" />
     <ClCompile Include="z3_ref_obj.cpp" />
     <ClCompile Include="z3_session_owner.cpp" />
+    <ClCompile Include="z3_socket_obj.cpp" />
     <ClCompile Include="z3_thread.cpp" />
     <ClCompile Include="z3_timer_obj.cpp" />
     <ClCompile Include="z3_udp_session.cpp" />
