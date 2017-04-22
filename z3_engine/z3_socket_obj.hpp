@@ -8,14 +8,26 @@ namespace Z3 {
         class SocketObj : public IOEndpoint
         {
         public:
+                typedef enum _SOCKET_TYPE
+                {
+                        TCP_SOCK,
+                        UDP_SOCK
+                } SOCKET_TYPE;
+
                 SocketObj(HANDLE hIOCP, uint32_t nObjID);
 
-                int     AsyncConnect(SOCKET hSocket, SOCKADDR_IN *pTarget, uint32_t nMillseconds);
-                int     AsyncTCPRead(SOCKET hSocket, uint32_t nMillseconds, WSABUF *pwsaBuf);
-                int     AsyncTCPWrite(SOCKET hSocket, uint32_t nMillseconds, WSABUF *pwsaBuf);
+                int      Init(SOCKET_TYPE type);
+                int      Close(void);
+                int      Bind(uint16_t nPort);
 
-                int     AsyncUDPRead(SOCKET hSocket, uint32_t nMillseconds, WSABUF *pwsaBuf, SOCKADDR *pSockAddr, int *pnAddrSize);
-                int     AsyncUDPWrite(SOCKET hSocket, uint32_t nMillseconds, WSABUF *pwsaBuf);
+                inline SOCKET   GetSocket() { return m_hSocket; }
+
+                int     AsyncConnect(SOCKADDR_IN *pTarget, uint32_t nMillseconds);
+                int     AsyncTCPRead(uint32_t nMillseconds, WSABUF *pwsaBuf);
+                int     AsyncTCPWrite(uint32_t nMillseconds, WSABUF *pwsaBuf);
+
+                int     AsyncUDPRead(uint32_t nMillseconds, WSABUF *pwsaBuf, SOCKADDR *pSockAddr, int *pnAddrSize);
+                int     AsyncUDPWrite(uint32_t nMillseconds, WSABUF *pwsaBuf);
 
         protected:
                 virtual ~SocketObj();

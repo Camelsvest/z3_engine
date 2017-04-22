@@ -130,7 +130,7 @@ HANDLE TimerEngine::AddTimer(LPHANDLE phTimer, PVOID lpParameter, uint32_t mills
 
 bool TimerEngine::DeleteTimer(HANDLE hTimer)
 {
-        BOOL    bOK;
+        BOOL    bOK, bRepeat = TRUE;
         HANDLE  hCompletionEvent;
         DWORD   dwResult;
 
@@ -143,12 +143,29 @@ bool TimerEngine::DeleteTimer(HANDLE hTimer)
                 return false;
         }
 
-        bOK = ::DeleteTimerQueueTimer(m_hTimerQueue, hTimer, hCompletionEvent);
+        do
+        {
+                bOK = ::DeleteTimerQueueTimer(m_hTimerQueue, hTimer, hCompletionEvent);
+                if (bOK)
+                        bRepeat = false;
+                else
+                {
+                        dwResult = ::GetLastError();
+                        if (dwResult == ERROR_IO_PENDING)
+                                bRepeat = false;
+                        else
+                        {
+                                TRACE_WARN("Failed to delete Timer(0x%X) from timer queue(0x%X), retry after 10 millseconds\r\n");
+                                ::Sleep(10);
+                        }                                
+                }
 
+        } while (bRepeat);
+        
         dwResult = ::WaitForSingleObject(hCompletionEvent, INFINITE);
         ::CloseHandle(hCompletionEvent);
 
-        if (dwResult == WAIT_OBJECT_0 && bOK)
+        if (dwResult == WAIT_OBJECT_0)
         {
                 return true;
         }

@@ -13,15 +13,15 @@ namespace Z3 {
                 void*   Pop(ev_id_t &evID);
 
                 bool    Signal(bool bOK = true);
-                bool    WaitForEV(Z3EV &ev, uint32_t nTimeout = INFINITE /* millseconds*/);
+                bool    WaitForEV(Z3EV_ASYNCQUEUE_ITEM &item, uint32_t nTimeout = INFINITE /* millseconds*/);
 
         protected:
 
 
         private:
-                std::queue<Z3EV>        m_Queue;
-                HANDLE                  m_hEvent;
-                HANDLE                  m_hMutex;
+                std::queue<Z3EV_ASYNCQUEUE_ITEM>        m_Queue;
+                HANDLE  m_hEvent;
+                HANDLE  m_hMutex;
         };
 };
 

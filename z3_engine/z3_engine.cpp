@@ -57,7 +57,12 @@ void Engine::RunOnce()
         if (pOvl)
         {
                 TRACE_DETAIL("Ovl(0x%p) is available, dispatch...\r\n", pOvl);
-                pZ3Ovl = (LPZ3_EV_OVL)pOvl;               
+                pZ3Ovl = (LPZ3_EV_OVL)pOvl;
+
+                // Set Error Code 
+                pZ3Ovl->ovl.Internal = bOK ? ERROR_SUCCESS : ::GetLastError();
+
+                // Dispatch to ExecutorPool
                 Dispatch(GET_EV_ID(pZ3Ovl), pZ3Ovl);
         }
 

@@ -24,10 +24,10 @@ namespace Z3 {
         public:
                 AsyncObj(uint32_t nObjID = INVALID_OBJ_ID);
 
-                inline bool     Lock()  { return m_Lock.On(); }
-                inline void     Unlock()        { return m_Lock.Off(); }
+                bool     Lock()  { return m_Lock.On(); }
+                void     Unlock()       { return m_Lock.Off(); }
 
-                inline uint32_t GetObjID()      { return m_nObjID; }
+                uint32_t GetObjID()     { return m_nObjID; }
 
                 uint32_t        GetRefCount();
                 uint32_t        AddRef();

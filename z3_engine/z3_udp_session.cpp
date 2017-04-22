@@ -8,8 +8,7 @@ using namespace Z3;
 #endif
 
 UDPSession::UDPSession(HANDLE hIOCP, uint32_t nObjID)
-        : IOCPObj(hIOCP, nObjID)
-        , m_hSocket(INVALID_SOCKET)
+        : SocketObj(hIOCP, nObjID)
         , m_nPort(0)
         , m_hIOCP(hIOCP)
         , m_pUdpRecvBuf(NULL)
@@ -27,46 +26,44 @@ UDPSession::UDPSession(HANDLE hIOCP, uint32_t nObjID)
 
 UDPSession::~UDPSession()
 {
-        Z3_CLOSE_SOCKET(m_hSocket);
         Z3_FREE_POINTER(m_pUdpRecvBuf);
 }
 
 int UDPSession::Init(uint16_t nPort)
 {
-        SOCKADDR_IN     local;
+        int             nError;
+        SOCKET          hSocket;
+        HANDLE          hIOCP;
 
-        assert(m_hSocket == INVALID_SOCKET);
-        m_hSocket = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-        if (m_hSocket == INVALID_SOCKET)
+        nError = SocketObj::Init(UDP_SOCK);
+        if (nError != Z3_EOK)
         {
                 TRACE_ERROR("Failed to create socket in UDPSession object 0x%p, function %s, file %s, line %d\r\n",
                         this, __FUNCTION__, __FILE__, __LINE__);
-                return Z3_WSA_ERROR;
+                return nError;
         }
 
         m_nPort = nPort;
 
-        local.sin_addr.s_addr   = ::htonl(INADDR_ANY);
-        local.sin_family        = AF_INET;
-        local.sin_port          = ::htons(m_nPort);
+        nError = Bind(nPort);
+        if (nError != Z3_EOK)
+                return nError;
 
-        if (SOCKET_ERROR == ::bind(m_hSocket, (struct sockaddr *)&local, sizeof(SOCKADDR_IN)))
-        {
-                TRACE_ERROR("Failed to bind socket in UDPSession object 0x%p, function %s, file %s, line %d\r\n",
-                        this, __FUNCTION__, __FILE__, __LINE__);
-
-                return Z3_WSA_ERROR;
-        }
+        hSocket = GetSocket();
+        assert(hSocket != INVALID_SOCKET);
 
         assert(m_hIOCP);
-        if (NULL == ::CreateIoCompletionPort((HANDLE)m_hSocket, m_hIOCP, GetObjID(), 0))
+        hIOCP = ::CreateIoCompletionPort((HANDLE)hSocket, m_hIOCP, GetObjID(), 0);
+        if (NULL == hIOCP)
         {
                 TRACE_ERROR("Failed to create completion port in function %s, file %s, line %d\r\n",
                         __FUNCTION__, __FILE__, __LINE__);
 
-                Z3_CLOSE_SOCKET(m_hSocket);
+                Close();
                 return Z3_SYS_ERROR;
         }
+
+        assert(hIOCP == m_hIOCP);
 
         return Z3_EOK;
 
@@ -74,32 +71,31 @@ int UDPSession::Init(uint16_t nPort)
 
 int UDPSession::StartRead(uint32_t nTimeout /*Millseconds*/)
 {
-        int             nError;
+        int     nError;
 
         TRACE_ENTER_FUNCTION;
 
-        assert(m_hSocket != INVALID_SOCKET);
         memset(m_wsaRecvBuf.buf, 0, m_wsaRecvBuf.len);
         
         m_nAddrFromSize = sizeof(m_addrFrom);
-        nError = SocketAsyncUDPRead(m_hSocket, nTimeout, &m_wsaRecvBuf, (LPSOCKADDR)&m_addrFrom, &m_nAddrFromSize);
+        nError = AsyncUDPRead(nTimeout, &m_wsaRecvBuf, (LPSOCKADDR)&m_addrFrom, &m_nAddrFromSize);
 
         TRACE_EXIT_FUNCTION;
 
         return nError;
 }
 
-int UDPSession::Run(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes, bool bExpired)
+int UDPSession::Run(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes)
 {
         int nError = Z3_EOK;
 
         switch (evID)
         {
         case EV_READ:
-                nError = OnEvRead(nErrorCode, nBytes, bExpired);
+                nError = OnEvRead(nErrorCode, nBytes);
                 break;
         case EV_WRITE:
-                nError = OnEvWrite(nErrorCode, nBytes, bExpired);
+                nError = OnEvWrite(nErrorCode, nBytes);
                 break;
         default:
                 assert(false);
@@ -110,15 +106,17 @@ int UDPSession::Run(ev_id_t evID, uint32_t nErrorCode, uint32_t nBytes, bool bEx
         return nError;
 }
 
-int UDPSession::OnEvRead(uint32_t nErrorCode, uint32_t nBytes, bool bExpired)
+int UDPSession::OnEvRead(uint32_t nErrorCode, uint32_t nBytes)
 {
         ProtoParser     *pParser;
         Msg             *pMsg;
         uint32_t        nError = Z3_EOK;
 
-        if (bExpired)
+        if (nErrorCode != ERROR_SUCCESS)
         {
-                TRACE_WARN("UDP Session operation \"READ\" expired.\r\n");
+                TRACE_WARN("Failed for operation \"UDPSession::OnEvRead\", Error code: 0x%X.\r\n", nErrorCode);
+                Close();
+
                 return Z3_EINTR;
         }
 
@@ -150,11 +148,13 @@ int UDPSession::OnEvRead(uint32_t nErrorCode, uint32_t nBytes, bool bExpired)
         return nError;
 }
 
-int UDPSession::OnEvWrite(uint32_t nErrorCode, uint32_t nBytes, bool bExpired)
+int UDPSession::OnEvWrite(uint32_t nErrorCode, uint32_t nBytes)
 {
-        if (bExpired)
+        if (nErrorCode != ERROR_SUCCESS)
         {
-                TRACE_WARN("UDPSession operation \"WRITE\" expired.\r\n");
+                TRACE_WARN("Failed for operation \"UDPSession::OnEvWrite\", Error code: 0x%X.\r\n", nErrorCode);
+                Close();
+
                 return Z3_EINTR;
         }
 

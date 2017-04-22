@@ -9,8 +9,6 @@ using namespace Z3;
 
 Connector::Connector(HANDLE hIOCP, uint32_t nObjID)
         : SocketObj(hIOCP, nObjID)
-        , m_hSocket(INVALID_SOCKET)
-        , m_ConnState(CONN_UNCONNECTED)
         , m_pRecvBuf(NULL)
         , m_nRecvBufSize(SOCKET_RECV_BUFSIZE)
         , m_pSendBuf(NULL)
@@ -36,9 +34,6 @@ Connector::~Connector()
         Z3_FREE_POINTER(m_pSendBuf);
         Z3_FREE_POINTER(m_pRecvBuf);
         Z3_FREE_POINTER(m_pszHost);
-        Z3_CLOSE_SOCKET(m_hSocket);
-
-        //assert(m_ConnState == CONN_UNCONNECTED);
 }
 
 bool Connector::SetDestination(const char *pszHost, uint16_t nPort)
@@ -69,7 +64,7 @@ int Connector::Connect(uint32_t nTimeout /*Millseconds*/)
         BOOL            bOK;
         int             nError;
         HANDLE          hIOCP;
-        SOCKADDR_IN     local;               
+        SOCKET          hSocket;
         PADDRINFOEX     pAddrInfoEx;
         SOCKADDR_IN     target;
         LPFN_CONNECTEX  lpfnConnectEx;
@@ -86,37 +81,45 @@ int Connector::Connect(uint32_t nTimeout /*Millseconds*/)
                 return Z3_WSA_ERROR;
         }
 
-        assert(m_hSocket == INVALID_SOCKET);
-        m_hSocket = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-        assert (m_hSocket != INVALID_SOCKET);
-
-        local.sin_addr.s_addr = ::htonl(INADDR_ANY);
-        local.sin_family = AF_INET;
-        local.sin_port = ::htons(0);
-
-        if (SOCKET_ERROR == ::bind(m_hSocket, (struct sockaddr *)&local, sizeof(SOCKADDR_IN)))
+        nError = Init(TCP_SOCK);
+        if (nError != Z3_EOK)
         {
-                TRACE_ERROR("Failed to bind socket in connector object 0x%p, function %s, file %s, line %d\r\n",
+                TRACE_ERROR("Failed to create socket in Connector object 0x%p, function %s, file %s, line %d\r\n",
                         this, __FUNCTION__, __FILE__, __LINE__);
-
-                ::FreeAddrInfoEx(pAddrInfoEx);
-
-                TRACE_EXIT_FUNCTION;
-                return Z3_WSA_ERROR;
+                return nError;
         }
+                
+        // Bind with local any port
+        nError = Bind(0);
+        if (nError != Z3_EOK)
+        {
+                ::FreeAddrInfoEx(pAddrInfoEx);
+                TRACE_EXIT_FUNCTION;
+                return nError;
+        }
+
+        hSocket = GetSocket();
+        assert(hSocket != INVALID_SOCKET);
 
         // important, associates SOCKET with IOCP
         assert(m_hIOCP != NULL);
-        hIOCP = ::CreateIoCompletionPort((HANDLE)m_hSocket, m_hIOCP, GetObjID(), 0);
+        hIOCP = ::CreateIoCompletionPort((HANDLE)hSocket, m_hIOCP, GetObjID(), 0);
+        if (NULL == hIOCP)
+        {
+                TRACE_ERROR("Failed to create completion port in function %s, file %s, line %d\r\n",
+                        __FUNCTION__, __FILE__, __LINE__);
+
+                Close();
+                return Z3_SYS_ERROR;
+        }
+
         assert(hIOCP == m_hIOCP);
 
         memcpy(&target, pAddrInfoEx->ai_addr, sizeof(struct sockaddr));
         target.sin_port = ::htons(m_nPort);
         ::FreeAddrInfoEx(pAddrInfoEx);
 
-        m_ConnState = CONN_CONNECTING;
-
-        nError = AsyncConnect(m_hSocket, &target, nTimeout);
+        nError = AsyncConnect(&target, nTimeout);
 
         TRACE_EXIT_FUNCTION;
         return nError;
@@ -197,8 +200,7 @@ int Connector::WriteMsg(const char *pBuf, uint32_t nSize)
         memmove(m_wsaSendBuf.buf, pBuf, nSize); // 可能存在区域重叠
         m_wsaSendBuf.len = nSize;
 
-        assert(m_hSocket != INVALID_SOCKET);
-        nError = AsyncTCPWrite(m_hSocket, SOCKET_WRITE_TIMEOUT, &m_wsaSendBuf);
+        nError = AsyncTCPWrite(SOCKET_WRITE_TIMEOUT, &m_wsaSendBuf);
 
         TRACE_EXIT_FUNCTION;
         return nError;
@@ -206,13 +208,12 @@ int Connector::WriteMsg(const char *pBuf, uint32_t nSize)
 
 int Connector::StartRead(uint32_t nTimeout /*Millseconds*/)
 {
-        int             nError;
+        int     nError;
 
         TRACE_ENTER_FUNCTION;
 
-        assert(m_hSocket != INVALID_SOCKET);
         memset(m_wsaRecvBuf.buf, 0, m_wsaRecvBuf.len);
-        nError = AsyncTCPRead(m_hSocket, SOCKET_READ_TIMEOUT, &m_wsaRecvBuf);
+        nError = AsyncTCPRead(SOCKET_READ_TIMEOUT, &m_wsaRecvBuf);
 
         TRACE_EXIT_FUNCTION;
 
@@ -223,7 +224,6 @@ int Connector::OnStart()
 {
         int nResult = Z3_EOK;
 
-        assert(m_ConnState == CONN_UNCONNECTED);
         if (m_pszHost && m_nPort > 0)
                 nResult = Connect(SOCKET_CONNECTING_TIMEOUT);
 
@@ -232,27 +232,26 @@ int Connector::OnStart()
 
 int Connector::OnStop()
 {
-        int nResult = Z3_EOK;
-
-        assert(false);
-
-        return nResult;
+        // 当外界调用STOP关闭一个Connector时，仅在这里调用closesocket，其余
+        // 处理应交由Z3_ENGINE完成
+        // Close socket
+        return Close();
 }
 
-int Connector::OnEvCompleted(ev_id_t evID, uint32_t nStatusCode, uint32_t nBytes, bool bExpired)
+int Connector::OnEvCompleted(ev_id_t evID, uint32_t nStatusCode, uint32_t nBytes)
 {
         int nError = Z3_EOK;
 
         switch(evID)
         {
         case EV_READ:
-                nError = OnEvRead(nStatusCode, nBytes, bExpired);
+                nError = OnEvRead(nStatusCode, nBytes);
                 break;
         case EV_WRITE:
-                nError = OnEvWrite(nStatusCode, nBytes, bExpired);
+                nError = OnEvWrite(nStatusCode, nBytes);
                 break;
         case EV_CONNECT:
-                nError = OnConnect(nStatusCode, bExpired);
+                nError = OnConnect(nStatusCode);
                 break;
         default:
                 assert(false);
@@ -262,28 +261,30 @@ int Connector::OnEvCompleted(ev_id_t evID, uint32_t nStatusCode, uint32_t nBytes
         return nError;
 }
 
-int Connector::OnConnect(uint32_t nStatusCode, bool bExpired)
+int Connector::OnConnect(uint32_t nErrorCode)
 {
-        HRESULT hr;
-
-        hr = HRESULT_FROM_NT(nStatusCode);
-        if (SUCCEEDED(hr))
+        if (nErrorCode != ERROR_SUCCESS)
         {
+                TRACE_WARN("Failed for operation \"CONNECT\", Error code: 0x%X\r\n", nErrorCode);
+                Close();
 
+                return Z3_EINTR;
         }
 
         return 0;
 }
 
-int Connector::OnEvRead(uint32_t nErrorCode, uint32_t nBytes, bool bExpired)
+int Connector::OnEvRead(uint32_t nErrorCode, uint32_t nBytes)
 {
         ProtoParser     *pParser;
         Msg             *pMsg;
         uint32_t        nError = Z3_EOK;
 
-        if (bExpired)
+        if (nErrorCode != ERROR_SUCCESS)
         {
-                TRACE_WARN("Timer expired for operation \"READ\"\r\n");
+                TRACE_WARN("Failed for operation \"READ\", Error code: 0x%X\r\n", nErrorCode);
+                Close();
+
                 return Z3_EINTR;
         }
 
@@ -317,13 +318,15 @@ int Connector::OnEvRead(uint32_t nErrorCode, uint32_t nBytes, bool bExpired)
         return nError;
 }
 
-int Connector::OnEvWrite(uint32_t nErrorCode, uint32_t nBytes, bool bExpired)
+int Connector::OnEvWrite(uint32_t nErrorCode, uint32_t nBytes)
 {
         int     nError = Z3_EOK;
 
-        if (bExpired)
+        if (nErrorCode != ERROR_SUCCESS)
         {
-                TRACE_WARN("Timer expired for operation \"WRITE\"\r\n");
+                TRACE_WARN("Failed for operation \"WRITE\", Error code: 0x%X\r\n", nErrorCode);
+                Close();
+
                 return Z3_EINTR;
         }
 

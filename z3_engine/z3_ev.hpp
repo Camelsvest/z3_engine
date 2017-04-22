@@ -35,12 +35,11 @@ typedef struct _Z3_EV_OVERLAPPED
 //        void                    *data;
 //} Z3OVL, *LPZ3OVL;
 
-typedef struct _Z3_EV
+typedef struct _Z3_EV_ASYNCQUEUE_ITEM
 {
         ev_id_t id;
-        bool    timeout;
         void    *data;
-} Z3EV, *LPZ3EV;
+} Z3EV_ASYNCQUEUE_ITEM, *LPZ3EV_ASYNCQUEUE_ITEM;
 
 #define ACT_OVL_ADDR(z3ovl_pointer)                     ((LPOVERLAPPED)(&(z3ovl_pointer->ovl)))
 //#define TIMEOUT_OVL_ADDR(z3ovl_pointer)                 (LPOVERLAPPED)((char *)z3ovl_pointer + sizeof(Z3_EV_OVL))

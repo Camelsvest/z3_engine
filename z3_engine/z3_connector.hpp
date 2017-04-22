@@ -13,29 +13,21 @@ namespace Z3 {
                 Connector(HANDLE hIOCP, uint32_t nObjID = INVALID_OBJ_ID);
 
                 bool            SetDestination(const char *pszHost, uint16_t nPort);
-                inline SOCKET   GetSocket() { return m_hSocket; }
 
                 inline char*            GetRecvBuffer() { return m_pRecvBuf; }
                 inline unsigned int     GetRecvBufSize() { return m_nRecvBufSize; }
 
         protected:
-                typedef enum _CONNECTOR_STATE
-                {
-                        CONN_UNCONNECTED,
-                        CONN_CONNECTING,
-                        CONN_CONNECTED
-                } CONNECTOR_STATE;
-
                 virtual ~Connector();
 
-                virtual int     OnEvCompleted(ev_id_t evID, uint32_t nStatusCode, uint32_t nBytes, bool bExpired);
+                virtual int     OnEvCompleted(ev_id_t evID, uint32_t nStatusCode, uint32_t nBytes);
                 virtual int     OnStart();
                 virtual int     OnStop();
 
                 int     Connect(uint32_t nTimeout /*Millseconds*/);
-                virtual int     OnConnect(uint32_t nStatusCode, bool bExpired);
-                virtual int     OnEvRead(uint32_t nErrorCode, uint32_t nBytes, bool bExpired);
-                virtual int     OnEvWrite(uint32_t nErrorCode, uint32_t nBytes, bool bExpired);
+                virtual int     OnConnect(uint32_t nErrorCode);
+                virtual int     OnEvRead(uint32_t nErrorCode, uint32_t nBytes);
+                virtual int     OnEvWrite(uint32_t nErrorCode, uint32_t nBytes);
 
                 virtual ProtoParser*    GetProtoParser() = 0;
                 virtual int     Dispatch(Msg *pMsg, void *pData) = 0;
@@ -47,9 +39,6 @@ namespace Z3 {
                 int             StartRead(uint32_t nTimeout /*Millseconds*/);
 
         private:
-                SOCKET          m_hSocket;
-                CONNECTOR_STATE m_ConnState;
-
                 char            *m_pRecvBuf;
                 uint32_t        m_nRecvBufSize;
 
