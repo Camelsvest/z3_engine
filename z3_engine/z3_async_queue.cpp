@@ -8,8 +8,8 @@ using namespace Z3;
 #define new z3_debug_new
 #endif
 
-
-AsyncQueue::AsyncQueue()
+template<class TYPE, class TYPE_ARG>
+AsyncQueue<TYPE, TYPE_ARG>::AsyncQueue()
         : m_hEvent(NULL)
         , m_hMutex(NULL)
 {
@@ -20,51 +20,48 @@ AsyncQueue::AsyncQueue()
         assert(m_hMutex != NULL);
 }
 
-AsyncQueue::~AsyncQueue()
+template<class TYPE, class TYPE_ARG>
+AsyncQueue<TYPE, TYPE_ARG>::~AsyncQueue()
 {
         ::CloseHandle(m_hMutex);
         ::CloseHandle(m_hEvent);
 }
 
-
-void AsyncQueue::Push(ev_id_t evID, void *pData)
+template<class TYPE, class TYPE_ARG>
+void AsyncQueue<TYPE, TYPE_ARG>::Push(TYPE_ARG element)
 {
         DWORD   dwResult;
-        Z3EV_ASYNCQUEUE_ITEM  item;
-
-        item.id = evID;
-        item.data = pData;
 
         dwResult = ::WaitForSingleObject(m_hMutex, INFINITE);
         assert(dwResult == WAIT_OBJECT_0);
-        m_Queue.push(item);
+        
+        m_Queue.push(element);
+
         ::ReleaseMutex(m_hMutex);        
 }
 
-void* AsyncQueue::Pop(ev_id_t &evID)
+template<class TYPE, class TYPE_ARG>
+bool AsyncQueue<TYPE, TYPE_ARG>::Pop(TYPE &element)
 {
-        DWORD                   dwResult;
-        Z3EV_ASYNCQUEUE_ITEM    item;
-        void                    *pData;
-
-        pData = NULL;
+        DWORD   dwResult;
+        bool    bOK = false;
 
         dwResult = ::WaitForSingleObject(m_hMutex, INFINITE);
         assert(dwResult == WAIT_OBJECT_0);
         if (!m_Queue.empty())
         {
-                item = m_Queue.front();
+                element = m_Queue.front();
                 m_Queue.pop();
 
-                pData = item.data;
-                evID = item.id;
+                bOK = true;
         }
         ::ReleaseMutex(m_hMutex);
 
-        return pData;
+        return bOK;
 }
 
-bool AsyncQueue::Signal(bool bOK)
+template<class TYPE, class TYPE_ARG>
+bool AsyncQueue<TYPE, TYPE_ARG>::Signal(bool bOK)
 {
         assert(m_hEvent);
 
@@ -74,7 +71,8 @@ bool AsyncQueue::Signal(bool bOK)
                 return (::ResetEvent(m_hEvent) == TRUE);
 }
 
-bool AsyncQueue::WaitForEV(Z3EV_ASYNCQUEUE_ITEM &item, uint32_t nTimeout/* millseconds*/)
+template<class TYPE, class TYPE_ARG>
+bool AsyncQueue<TYPE, TYPE_ARG>::WaitForEV(TYPE &element, uint32_t nTimeout/* millseconds*/)
 {
         DWORD   dwResult;
         HANDLE  Handles[2];
@@ -92,7 +90,7 @@ bool AsyncQueue::WaitForEV(Z3EV_ASYNCQUEUE_ITEM &item, uint32_t nTimeout/* mills
         {
                 if (!m_Queue.empty())
                 {
-                        item = m_Queue.front();
+                        element = m_Queue.front();
                         m_Queue.pop();
 
                         bOk = true;
