@@ -27,6 +27,9 @@
     <ClCompile Include="z3_trace.c">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="z3_win_util.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="z3_alloc.h">
@@ -36,6 +39,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="z3_trace.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="z3_win_util.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

@@ -80,11 +80,13 @@
     <ClCompile Include="z3_alloc.c" />
     <ClCompile Include="z3_list.c" />
     <ClCompile Include="z3_trace.c" />
+    <ClCompile Include="z3_win_util.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="z3_alloc.h" />
     <ClInclude Include="z3_list.h" />
     <ClInclude Include="z3_trace.h" />
+    <ClInclude Include="z3_win_util.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
