@@ -10,7 +10,7 @@ namespace Z3 {
         public:
                 SessionOwner(uint32_t nObjID = INVALID_OBJ_ID);
 
-                virtual void OnNotify(uint32_t nSessionState, void *pData) = 0;
+                virtual void OnNotify(ev_id_t evID, uint32_t nErrorCode, void *pData) = 0;
 
         protected:
                 virtual ~SessionOwner();

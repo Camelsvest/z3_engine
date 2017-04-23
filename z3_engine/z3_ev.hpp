@@ -41,6 +41,13 @@ typedef struct _Z3_EV_ASYNCQUEUE_ITEM
         void    *data;
 } Z3EV_ASYNCQUEUE_ITEM, *LPZ3EV_ASYNCQUEUE_ITEM;
 
+typedef struct _Z3_EV_NOTIFY_ITEM
+{
+        ev_id_t         id;
+        uint32_t        nErrorCode;
+        void            *data;
+} Z3_EV_NOTIFY_ITEM, *LPZ3EV_NOTIFY_ITEM;
+
 #define ACT_OVL_ADDR(z3ovl_pointer)                     ((LPOVERLAPPED)(&(z3ovl_pointer->ovl)))
 //#define TIMEOUT_OVL_ADDR(z3ovl_pointer)                 (LPOVERLAPPED)((char *)z3ovl_pointer + sizeof(Z3_EV_OVL))
 //#define Z3OVL_ADDR_FROM_TIMEOUTOVL(timeout_ovl_pointer) (LPZ3OVL)((char *)timeout_ovl_pointer - sizeof(Z3_EV_OVL))

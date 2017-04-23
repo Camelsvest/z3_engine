@@ -8,7 +8,7 @@ using namespace Z3;
 #define new z3_debug_new
 #endif
 
-Executor::Executor(AsyncQueue *pQueue, uint32_t nObjID)
+Executor::Executor(EV_QUEUE_T *pQueue, uint32_t nObjID)
         : Thread(nObjID)
         , m_pQueue(pQueue)
 {
@@ -31,6 +31,8 @@ void Executor::RunOnce()
         LPZ3_EV_OVL pZ3Ovl;
         IOEndpoint *pObj;
 
+        //TRACE_ENTER_FUNCTION;
+
         bSucceed = m_pQueue->WaitForEV(item, 100 /*INFINITE*/);
         if (bSucceed)
         {
@@ -47,9 +49,15 @@ void Executor::RunOnce()
 
                 pObj->FreeZ3Ovl(pZ3Ovl);                
         }
+
+        //TRACE_EXIT_FUNCTION;
 }
 
 void Executor::OnThreadStop()
 {
+        TRACE_ENTER_FUNCTION;
+
         Thread::OnThreadStop();
+
+        TRACE_EXIT_FUNCTION;
 }

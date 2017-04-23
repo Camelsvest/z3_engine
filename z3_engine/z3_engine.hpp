@@ -9,6 +9,8 @@
 
 namespace Z3 {
 
+        typedef AsyncQueue<Z3EV_ASYNCQUEUE_ITEM> EV_QUEUE_T;
+
         class Engine : public Thread
         {
         public:
@@ -26,8 +28,11 @@ namespace Z3 {
                 //        OP_EXIT
                 //} ACTION_TYPE;
 
-                inline HANDLE           GetIOCP(void)   { return m_hIOCP; }
-                inline AsyncQueue*      GetAsyncQueue(void) { return &m_Queue; }
+                inline HANDLE
+                        GetIOCP(void)   { return m_hIOCP; }
+
+                inline EV_QUEUE_T*
+                        GetAsyncQueue(void) { return &m_Queue; }
 
         protected:
                 virtual ~Engine();
@@ -39,14 +44,8 @@ namespace Z3 {
                 bool    Dispatch(ev_id_t evID, LPZ3_EV_OVL pZ3Ovl);
 
         private:
-                HANDLE  m_hIOCP;
-
-                AsyncQueue      m_Queue;
-
-                //typedef stdext::hash_multimap<uint32_t, LPZ3_EV_OVL>    Z3OVL_HASH;
-                //typedef stdext::hash_multimap<uint32_t, LPZ3_EV_OVL>::iterator Z3OVL_HASH_ITERATOR;
-
-                //Z3OVL_HASH      m_hashPendingOvl;
+                HANDLE          m_hIOCP;
+                EV_QUEUE_T      m_Queue;
         };
 };
 

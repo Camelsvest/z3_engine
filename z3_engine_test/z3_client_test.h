@@ -11,7 +11,7 @@ namespace Z3 {
                 TestClient();
 
                 Connection* AddConnection(const char *pszHost, uint16_t port);
-                virtual void    OnNotify(uint32_t nSessionState, void *pData);
+                virtual void    OnNotify(ev_id_t evID, uint32_t nErrorCode, void *pData);
 
         protected:
                 virtual ~TestClient();

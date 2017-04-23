@@ -11,7 +11,7 @@ namespace Z3 {
                 ExecutorPool();
                 virtual ~ExecutorPool();
 
-                int     Init(AsyncQueue *pQueue, uint32_t nCount);
+                int     Init(EV_QUEUE_T *pQueue, uint32_t nCount);
                 void    Uninit();
 
         private:

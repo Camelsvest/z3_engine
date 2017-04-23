@@ -9,7 +9,7 @@ namespace Z3 {
         class Executor : public Thread
         {
         public:
-                Executor(AsyncQueue *pQueue, uint32_t nObjID = INVALID_OBJ_ID);
+                Executor(EV_QUEUE_T *pQueue, uint32_t nObjID = INVALID_OBJ_ID);
 
         protected:
                 virtual ~Executor();
@@ -19,7 +19,7 @@ namespace Z3 {
                 virtual void    OnThreadStop(void);
 
         private:
-                AsyncQueue      *m_pQueue;
+                EV_QUEUE_T      *m_pQueue;
         };
 };
 

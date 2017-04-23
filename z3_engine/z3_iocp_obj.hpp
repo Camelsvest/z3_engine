@@ -3,6 +3,7 @@
 
 #include "z3_timer_obj.hpp"
 #include "z3_ev.hpp"
+#include "z3_session_owner.hpp"
 
 namespace Z3 {
 
@@ -11,8 +12,10 @@ namespace Z3 {
         public:
                 IOCPObj(HANDLE hIOCP, uint32_t nObjID);
                            
-                int     Start(void);
+                int     Start(SessionOwner *pOwner);
                 int     Stop(void);
+
+                SessionOwner* GetOwner() { return m_pOwner; }
 
                 virtual LPZ3_EV_OVL     AllocZ3Ovl(ev_id_t evID, uint32_t millseconds) = 0;
                 virtual void            FreeZ3Ovl(LPZ3_EV_OVL pOvl) = 0;
@@ -23,7 +26,8 @@ namespace Z3 {
                 inline int      PostCompletionStatus(LPOVERLAPPED pOvl);
 
         protected:
-                HANDLE  m_hIOCP;
+                HANDLE          m_hIOCP;
+                SessionOwner    *m_pOwner;
 
         };
 };

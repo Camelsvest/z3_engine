@@ -32,6 +32,8 @@ namespace Z3 {
         protected:
                 virtual ~SocketObj();
 
+                virtual void    OnTimer(ev_id_t evID, void *pData);
+
         private:
                 SOCKET  m_hSocket;
         };

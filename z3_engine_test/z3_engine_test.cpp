@@ -34,7 +34,7 @@ int main()
         nError = pClient->Start();
         assert(!nError);
 
-        pConn = pClient->AddConnection("192.168.1.118", 4554);
+        pConn = pClient->AddConnection("192.168.101.1", 4554);
 
         printf("Press any key to quit ...");
         getchar();

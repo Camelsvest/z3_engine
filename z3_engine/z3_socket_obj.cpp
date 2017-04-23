@@ -204,3 +204,18 @@ int SocketObj::AsyncUDPWrite(uint32_t nMillseconds, WSABUF *pwsaBuf)
         assert(false);
         return Z3_EOK;
 }
+
+void SocketObj::OnTimer(ev_id_t evID, void *pData)
+{
+        switch (evID)
+        {
+        case EV_READ:
+        case EV_WRITE:
+        case EV_CONNECT:
+                CancelIO((LPZ3_EV_OVL)pData);
+                break;
+        case EV_ACCEPT:
+        default:
+                break;
+        }
+}

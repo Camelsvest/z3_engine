@@ -1,5 +1,6 @@
 #include "z3_common.hpp"
 #include "z3_connector.hpp"
+#include "z3_win_util.h"
 
 using namespace Z3;
 
@@ -263,9 +264,19 @@ int Connector::OnEvCompleted(ev_id_t evID, uint32_t nStatusCode, uint32_t nBytes
 
 int Connector::OnConnect(uint32_t nErrorCode)
 {
+        char    *pMsgString;
+        int     nLength;
+
         if (nErrorCode != ERROR_SUCCESS)
         {
-                TRACE_WARN("Failed for operation \"CONNECT\", Error code: 0x%X\r\n", nErrorCode);
+                nLength = retrieve_msg_string(nErrorCode, &pMsgString);
+                assert(nLength > 0);
+
+                TRACE_WARN("Failed for operation \"CONNECT\", Error: 0x%08X - \"%s\"\r\n", nErrorCode, pMsgString);
+                z3_free(pMsgString);
+
+                Z3_OBJ_ADDREF(this);
+                GetOwner()->OnNotify(EV_CONNECT, nErrorCode, this);
                 Close();
 
                 return Z3_EINTR;

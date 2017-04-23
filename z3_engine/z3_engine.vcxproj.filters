@@ -99,9 +99,6 @@
     <ClCompile Include="z3_iocp_obj.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="z3_async_queue.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="z3_executor.cpp">
       <Filter>源文件</Filter>
     </ClCompile>

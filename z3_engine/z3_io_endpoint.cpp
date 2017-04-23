@@ -88,7 +88,11 @@ int IOEndpoint::CancelTimer(LPZ3_EV_OVL pOvl)
         int     nRet;
 
         assert(pOvl != NULL);
-        assert(pOvl->timer != INVALID_HANDLE_VALUE);
+               
+        if (pOvl->timer == INVALID_HANDLE_VALUE)
+        {
+                return Z3_EINVAL;
+        }
 
         if (TRUE == DeleteTimer(pOvl->timer))
         {
@@ -107,9 +111,9 @@ void IOEndpoint::OnTimer(void *pData)
 
         assert(pData != NULL);
         pZ3Ovl = static_cast<LPZ3_EV_OVL>(pData);
-        
-        CancelIO(pZ3Ovl);
 
+        OnTimer(pZ3Ovl->ev_id, pData);
+        
         return;
 }
 

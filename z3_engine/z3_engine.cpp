@@ -48,7 +48,7 @@ void Engine::RunOnce()
         LPZ3_EV_OVL     pZ3Ovl; // wait whether it expires
         LPOVERLAPPED    pOvl = NULL;
 
-        TRACE_ENTER_FUNCTION;
+        //TRACE_ENTER_FUNCTION;
 
         assert(m_hIOCP);
         bOK = ::GetQueuedCompletionStatus(m_hIOCP, &dwBytes, 
@@ -66,7 +66,7 @@ void Engine::RunOnce()
                 Dispatch(GET_EV_ID(pZ3Ovl), pZ3Ovl);
         }
 
-        TRACE_EXIT_FUNCTION;
+        //TRACE_EXIT_FUNCTION;
 
         return;
 }
@@ -74,22 +74,26 @@ void Engine::RunOnce()
 void Engine::OnThreadStop(void)
 {
         LPZ3_EV_OVL pZ3Ovl;
-        ev_id_t evID;
-        void    *pData;
+        Z3EV_ASYNCQUEUE_ITEM item;
         IOCPObj *pObj;
+        bool bOK;
         
         assert(m_hIOCP);
         Z3_CLOSE_HANDLE(m_hIOCP);
 
-        pData = m_Queue.Pop(evID);
-        while (pData)
+        bOK = m_Queue.Pop(item);
+        while (bOK)
         {
-                pZ3Ovl = static_cast<LPZ3_EV_OVL>(pData);              
-                pObj = static_cast<IOCPObj *>(pZ3Ovl->data);
-                assert(pObj);
-                pObj->FreeZ3Ovl(pZ3Ovl);
+                if (item.data)
+                {
+                        pZ3Ovl = static_cast<LPZ3_EV_OVL>(item.data);
+                        pObj = static_cast<IOCPObj *>(pZ3Ovl->data);
+                        assert(pObj);
+
+                        pObj->FreeZ3Ovl(pZ3Ovl);
+                }
                 
-                pData = m_Queue.Pop(evID);
+                bOK = m_Queue.Pop(item);
         }
 
         Thread::OnThreadStop();
@@ -98,8 +102,13 @@ void Engine::OnThreadStop(void)
 
 bool Engine::Dispatch(ev_id_t evID, LPZ3_EV_OVL pZ3Ovl)
 {
+        Z3EV_ASYNCQUEUE_ITEM item;
+
+        item.id = evID;
+        item.data = pZ3Ovl;
+
         // 投递入异步队列
-        m_Queue.Push(evID, pZ3Ovl);
+        m_Queue.Push(item);
         
         return m_Queue.Signal();
 }

@@ -10,12 +10,14 @@ using namespace Z3;
 IOCPObj::IOCPObj(HANDLE hIOCP, uint32_t nObjID)
         : TimerObj(nObjID)
         , m_hIOCP(hIOCP)
+        , m_pOwner(NULL)
 {
         assert(m_hIOCP != NULL);
 }
 
 IOCPObj::~IOCPObj()
 {
+        Z3_OBJ_RELEASE(m_pOwner);
 }
 
 
@@ -35,10 +37,14 @@ inline int IOCPObj::PostCompletionStatus(LPOVERLAPPED pOvl)
         return Z3_EOK;
 }
 
-int IOCPObj::Start(void)
+int IOCPObj::Start(SessionOwner *pOwner)
 {
         int             iRet;
         LPZ3_EV_OVL     pZ3Ovl;
+
+        assert(m_pOwner);
+        m_pOwner = pOwner;
+        Z3_OBJ_ADDREF(m_pOwner);
 
         // pZ3Ovl 内存的删除，由z3_engine负责
         pZ3Ovl = AllocZ3Ovl(EV_INSTANCE_START, 0);

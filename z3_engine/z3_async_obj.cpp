@@ -17,6 +17,8 @@ bool Lock::On()
 {
         DWORD dwResult;
 
+        //TRACE_ENTER_FUNCTION;
+
         if (m_hMutex == NULL)
         {
                 m_hMutex = ::CreateMutexA(NULL, FALSE, NULL);
@@ -24,13 +26,20 @@ bool Lock::On()
         }
 
         dwResult = ::WaitForSingleObject(m_hMutex, INFINITE);
+
+        //TRACE_EXIT_FUNCTION;
+
         return (dwResult == WAIT_OBJECT_0);
 }
 
 void Lock::Off()
 {
+        //TRACE_ENTER_FUNCTION;
+
         assert (m_hMutex);
         ::ReleaseMutex(m_hMutex);
+
+        //TRACE_EXIT_FUNCTION;
 }
 
 AsyncObj::AsyncObj(uint32_t nObjID)

@@ -22,7 +22,7 @@ Client::~Client()
 int Client::Start()
 {
         bool            bOK;
-        AsyncQueue      *pQueue;
+        EV_QUEUE_T      *pQueue;
         SYSTEM_INFO     SysInfo;
         int             nError;
 

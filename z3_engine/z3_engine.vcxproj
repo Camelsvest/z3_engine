@@ -102,7 +102,6 @@
     <ClInclude Include="z3_udp_session.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="z3_async_queue.cpp" />
     <ClCompile Include="z3_client.cpp" />
     <ClCompile Include="z3_connector.cpp" />
     <ClCompile Include="z3_engine.cpp" />

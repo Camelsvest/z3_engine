@@ -25,7 +25,7 @@ int Connection::Dispatch(Msg *pMsg, void *pData)
         return 0;
 }
 
-int Connection::OnConnect(uint32_t nErrorCode, bool bExpired)
+int Connection::OnConnect(uint32_t nErrorCode)
 {
-        return Connector::OnConnect(nErrorCode, bExpired);
+        return Connector::OnConnect(nErrorCode);
 }

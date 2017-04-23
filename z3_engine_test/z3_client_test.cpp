@@ -43,13 +43,18 @@ Connection* TestClient::AddConnection(const char *pszHost, uint16_t port)
                 return NULL;
         }
 
-        pConn->Start();
+        pConn->Start(this);
 
         return pConn;
 
 }
 
-void TestClient::OnNotify(uint32_t nSessionState, void *pData)
+void TestClient::OnNotify(ev_id_t evID, uint32_t nErrorCode, void *pData)
 {
+        Connection *pConn;
 
+        assert(pData);
+        pConn = static_cast<Connection *>(pData);
+
+        
 }

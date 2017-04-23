@@ -12,7 +12,7 @@ namespace Z3 {
         protected:
                 virtual ~Connection();
 
-                virtual int     OnConnect(uint32_t nErrorCode, bool bExpired);
+                virtual int     OnConnect(uint32_t nErrorCode);
 
                 virtual ProtoParser*    GetProtoParser();
                 virtual int     Dispatch(Msg *pMsg, void *pData);

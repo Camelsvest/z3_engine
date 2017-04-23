@@ -16,7 +16,7 @@ ExecutorPool::~ExecutorPool()
         assert(m_lstExecutors.empty());
 }
 
-int ExecutorPool::Init(AsyncQueue *pQueue, uint32_t nCount)
+int ExecutorPool::Init(EV_QUEUE_T *pQueue, uint32_t nCount)
 {
         Executor *pExecutor;
         bool bOK;
