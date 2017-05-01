@@ -16,9 +16,10 @@ namespace Z3 {
 
                 SocketObj(HANDLE hIOCP, uint32_t nObjID);
 
-                int      Init(SOCKET_TYPE type);
-                int      Close(void);
-                int      Bind(uint16_t nPort);
+                int     Init(SOCKET_TYPE type);
+                int     Close(void);
+                bool    WaitForClosedEvent(uint32_t millseconds = INFINITE);
+                int     Bind(uint16_t nPort);
 
                 inline SOCKET   GetSocket() { return m_hSocket; }
 
@@ -33,6 +34,8 @@ namespace Z3 {
                 virtual ~SocketObj();
 
                 virtual void    OnTimer(ev_id_t evID, void *pData);
+
+                HANDLE  m_hClosedEvent;
 
         private:
                 SOCKET  m_hSocket;

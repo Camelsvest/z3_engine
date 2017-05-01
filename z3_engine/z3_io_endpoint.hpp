@@ -27,8 +27,6 @@ namespace Z3 {
                 virtual ~IOEndpoint();
 
                 virtual int     OnEvCompleted(ev_id_t evID, uint32_t nStatusCode, uint32_t nBytes) = 0;
-                virtual int     OnStart() = 0;
-                virtual int     OnStop() = 0;
 
         private:
                 void            OnTimer(void *pData);

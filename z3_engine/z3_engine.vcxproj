@@ -95,7 +95,6 @@
     <ClInclude Include="z3_obj_ids.hpp" />
     <ClInclude Include="z3_proto_parser.hpp" />
     <ClInclude Include="z3_ref_obj.hpp" />
-    <ClInclude Include="z3_session_owner.hpp" />
     <ClInclude Include="z3_socket_obj.hpp" />
     <ClInclude Include="z3_thread.hpp" />
     <ClInclude Include="z3_timer_obj.hpp" />
@@ -114,7 +113,6 @@
     <ClCompile Include="z3_async_obj.cpp" />
     <ClCompile Include="z3_proto_parser.cpp" />
     <ClCompile Include="z3_ref_obj.cpp" />
-    <ClCompile Include="z3_session_owner.cpp" />
     <ClCompile Include="z3_socket_obj.cpp" />
     <ClCompile Include="z3_thread.cpp" />
     <ClCompile Include="z3_timer_obj.cpp" />

@@ -55,9 +55,6 @@
     <ClInclude Include="z3_client.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="z3_session_owner.hpp">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="z3_msg.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -106,9 +103,6 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="z3_client.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="z3_session_owner.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="z3_msg.cpp">

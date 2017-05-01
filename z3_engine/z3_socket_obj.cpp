@@ -6,6 +6,7 @@ using namespace Z3;
 SocketObj::SocketObj(HANDLE hIOCP, uint32_t nObjID)
         : IOEndpoint(hIOCP, nObjID)
         , m_hSocket(INVALID_SOCKET)
+        , m_hClosedEvent(NULL)
 {
 
 }
@@ -13,6 +14,8 @@ SocketObj::SocketObj(HANDLE hIOCP, uint32_t nObjID)
 SocketObj::~SocketObj()
 {
         assert(m_hSocket == INVALID_SOCKET);
+
+        Z3_CLOSE_HANDLE(m_hClosedEvent);
 }
 
 int SocketObj::Init(SOCKET_TYPE type)
@@ -31,6 +34,12 @@ int SocketObj::Init(SOCKET_TYPE type)
                 assert(false);
         }
 
+        if (!m_hClosedEvent)
+        {
+                m_hClosedEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);
+                assert(m_hClosedEvent);
+        }
+
         return (m_hSocket == INVALID_SOCKET) ? Z3_WSA_ERROR : Z3_EOK;
 }
 
@@ -45,6 +54,9 @@ int SocketObj::Close(void)
                         return Z3_WSA_ERROR;
 
                 m_hSocket = INVALID_SOCKET;
+                
+                assert(m_hClosedEvent);
+                ::SetEvent(m_hClosedEvent);
         }
         else
                 TRACE_WARN("Duplicated operation, SocketObj(0x%X)\'s SOCKET HANDLE has been closed already.\r\n", this);
@@ -218,4 +230,14 @@ void SocketObj::OnTimer(ev_id_t evID, void *pData)
         default:
                 break;
         }
+}
+
+bool SocketObj::WaitForClosedEvent(uint32_t millseconds)
+{
+        DWORD dwResult;
+
+        assert(m_hClosedEvent);
+        dwResult = ::WaitForSingleObject(m_hClosedEvent, millseconds);
+        
+        return (dwResult == WAIT_OBJECT_0);
 }

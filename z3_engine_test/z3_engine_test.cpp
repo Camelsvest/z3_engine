@@ -17,6 +17,7 @@ int main()
         TestClient      *pClient;
         Connection      *pConn;
         int             nError;
+        bool            bOK;
         WSADATA         wsaData;
 
         nError = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -31,8 +32,8 @@ int main()
         pClient = new TestClient();
         Z3_OBJ_ADDREF(pClient);
 
-        nError = pClient->Start();
-        assert(!nError);
+        bOK = pClient->Start();
+        assert(bOK);
 
         pConn = pClient->AddConnection("192.168.101.1", 4554);
 
@@ -40,6 +41,8 @@ int main()
         getchar();
 
         Z3_OBJ_RELEASE(pConn);
+
+        pClient->Stop();
         Z3_OBJ_RELEASE(pClient);
 
         z3_alloc_uninit();

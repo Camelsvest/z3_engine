@@ -111,6 +111,8 @@ int Connector::Connect(uint32_t nTimeout /*Millseconds*/)
                         __FUNCTION__, __FILE__, __LINE__);
 
                 Close();
+                TRACE_EXIT_FUNCTION;
+
                 return Z3_SYS_ERROR;
         }
 
@@ -180,6 +182,8 @@ int Connector::WriteMsg(Msg *pMsg)
         unsigned int    nSize;
         char            *pBuf = NULL;
 
+        TRACE_ENTER_FUNCTION;
+
         assert(pMsg);
         if (!pMsg->ToString(&pBuf, &nSize))
                 return Z3_EINVAL;
@@ -188,6 +192,9 @@ int Connector::WriteMsg(Msg *pMsg)
         nError = WriteMsg(pBuf, nSize);
 
         Z3_FREE_POINTER(pBuf);
+        
+        TRACE_EXIT_FUNCTION;
+
         return nError;
 }
 
@@ -225,18 +232,32 @@ int Connector::OnStart()
 {
         int nResult = Z3_EOK;
 
+        TRACE_ENTER_FUNCTION;
+
         if (m_pszHost && m_nPort > 0)
                 nResult = Connect(SOCKET_CONNECTING_TIMEOUT);
 
-        return nResult;
+        TRACE_EXIT_FUNCTION;
+
+        if (nResult == Z3_EOK)
+                return SocketObj::OnStart();
+        else
+                return nResult;
 }
 
 int Connector::OnStop()
 {
+        int nResult;
+
         // 当外界调用STOP关闭一个Connector时，仅在这里调用closesocket，其余
         // 处理应交由Z3_ENGINE完成
         // Close socket
-        return Close();
+        nResult = Close();
+
+        if (nResult == Z3_EOK)
+                return SocketObj::OnStop();
+        else
+                return nResult;
 }
 
 int Connector::OnEvCompleted(ev_id_t evID, uint32_t nStatusCode, uint32_t nBytes)
@@ -267,21 +288,25 @@ int Connector::OnConnect(uint32_t nErrorCode)
         char    *pMsgString;
         int     nLength;
 
+        TRACE_ENTER_FUNCTION;
+
         if (nErrorCode != ERROR_SUCCESS)
         {
                 nLength = retrieve_msg_string(nErrorCode, &pMsgString);
                 assert(nLength > 0);
 
-                TRACE_WARN("Failed for operation \"CONNECT\", Error: 0x%08X - \"%s\"\r\n", nErrorCode, pMsgString);
+                TRACE_WARN("Failed for operation \"CONNECT\", Error: 0x%08X - %s\r\n", nErrorCode, pMsgString);
                 z3_free(pMsgString);
 
-                Z3_OBJ_ADDREF(this);
-                GetOwner()->OnNotify(EV_CONNECT, nErrorCode, this);
-                Close();
+                Notify(EV_CONNECT, nErrorCode);
+                //Close();
+
+                TRACE_EXIT_FUNCTION;
 
                 return Z3_EINTR;
         }
 
+        TRACE_EXIT_FUNCTION;
         return 0;
 }
 

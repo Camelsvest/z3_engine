@@ -15,12 +15,14 @@ using namespace Z3;
 Engine::Engine(uint32_t nObjID)
         : Thread(nObjID)
         , m_hIOCP(NULL)
+        , m_pQueue(NULL)
 {
 }
 
 Engine::~Engine()
 {
         assert(m_hIOCP == NULL);
+        assert(m_pQueue == NULL);
 }
 
 bool Engine::OnThreadStart(void)
@@ -29,16 +31,20 @@ bool Engine::OnThreadStart(void)
 
         TRACE_ENTER_FUNCTION;
 
-        bOK = Thread::OnThreadStart();
-        if (!bOK)
-                return false;
+        assert(m_pQueue == NULL);
+        m_pQueue = new EV_QUEUE_T;
+        Z3_OBJ_ADDREF(m_pQueue);
 
         assert(m_hIOCP == NULL);
-        m_hIOCP = ::CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);               
-        
+        m_hIOCP = ::CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
+        bOK = (m_hIOCP != NULL);
+
+        if (bOK)
+                bOK = Thread::OnThreadStart();
+
         TRACE_EXIT_FUNCTION;
 
-        return (m_hIOCP != NULL);
+        return bOK;
 }
 
 void Engine::RunOnce()
@@ -81,7 +87,7 @@ void Engine::OnThreadStop(void)
         assert(m_hIOCP);
         Z3_CLOSE_HANDLE(m_hIOCP);
 
-        bOK = m_Queue.Pop(item);
+        bOK = m_pQueue->Pop(item);
         while (bOK)
         {
                 if (item.data)
@@ -93,8 +99,9 @@ void Engine::OnThreadStop(void)
                         pObj->FreeZ3Ovl(pZ3Ovl);
                 }
                 
-                bOK = m_Queue.Pop(item);
+                bOK = m_pQueue->Pop(item);
         }
+        Z3_OBJ_RELEASE(m_pQueue);
 
         Thread::OnThreadStop();
 }
@@ -108,7 +115,7 @@ bool Engine::Dispatch(ev_id_t evID, LPZ3_EV_OVL pZ3Ovl)
         item.data = pZ3Ovl;
 
         // 投递入异步队列
-        m_Queue.Push(item);
+        m_pQueue->Push(item);
         
-        return m_Queue.Signal();
+        return m_pQueue->Signal();
 }

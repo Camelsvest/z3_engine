@@ -43,7 +43,7 @@ Connection* TestClient::AddConnection(const char *pszHost, uint16_t port)
                 return NULL;
         }
 
-        pConn->Start(this);
+        pConn->Start(GetNotifyQueue());
 
         return pConn;
 
@@ -56,5 +56,20 @@ void TestClient::OnNotify(ev_id_t evID, uint32_t nErrorCode, void *pData)
         assert(pData);
         pConn = static_cast<Connection *>(pData);
 
-        
+        switch (evID)
+        {
+        case EV_CONNECT:
+                if (nErrorCode != 0)
+                {
+                        TRACE_WARN("Failed for operation \"CONNECT\", Error: 0x%08X - \"%s\"\r\n", nErrorCode);
+                        pConn->Stop();
+                        pConn->WaitForClosedEvent();
+                        Z3_OBJ_RELEASE(pConn);  // delete it now
+
+                }
+                break;
+        default:
+                break;
+        }
+
 }

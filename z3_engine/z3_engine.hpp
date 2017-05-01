@@ -32,7 +32,7 @@ namespace Z3 {
                         GetIOCP(void)   { return m_hIOCP; }
 
                 inline EV_QUEUE_T*
-                        GetAsyncQueue(void) { return &m_Queue; }
+                        GetAsyncQueue(void) { return m_pQueue; }
 
         protected:
                 virtual ~Engine();
@@ -45,7 +45,7 @@ namespace Z3 {
 
         private:
                 HANDLE          m_hIOCP;
-                EV_QUEUE_T      m_Queue;
+                EV_QUEUE_T      *m_pQueue;
         };
 };
 

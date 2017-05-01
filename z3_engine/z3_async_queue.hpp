@@ -1,14 +1,15 @@
 #ifndef _Z3_ASYNC_QUEUE_HPP_
 #define _Z3_ASYNC_QUEUE_HPP_
 
+#include "z3_ref_obj.hpp"
+
 namespace Z3 {
 
         template<class TYPE, class TYPE_ARG = const TYPE &>
-        class AsyncQueue
+        class AsyncQueue : public RefObj
         {
         public:
                 AsyncQueue();
-                virtual ~AsyncQueue();
 
                 inline void    Push(TYPE_ARG element);
                 inline bool    Pop(TYPE &element);
@@ -17,7 +18,7 @@ namespace Z3 {
                 inline bool    WaitForEV(TYPE &element, uint32_t nTimeout = INFINITE /* millseconds*/);
 
         protected:
-
+                virtual ~AsyncQueue();
 
         private:
                 std::queue<TYPE>        m_Queue;
