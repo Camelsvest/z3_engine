@@ -13,7 +13,6 @@ namespace Z3 {
         public:
                 Client(uint32_t nObjID = INVALID_OBJ_ID);
 
-                /*virtual int     AddSession(const char *pszHost, uint16_t nPort) = 0;*/
                 bool     Running();
                 HANDLE   GetIOCP();
                 inline NOTIFY_QUEUE_T* GetNotifyQueue(void) { return m_pMsgQueue; }

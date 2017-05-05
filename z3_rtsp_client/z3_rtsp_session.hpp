@@ -3,7 +3,6 @@
 
 #include "z3_rtsp_ids.hpp"
 #include "z3_connector.hpp"
-#include "z3_session_owner.hpp"
 #include "z3_rtsp_def.hpp"
 #include "z3_rtsp_msg.hpp"
 #include "z3_rtsp_proto_parser.hpp"
@@ -14,7 +13,7 @@ namespace Z3 {
         class RtspSession : public Connector
         {
         public:
-                RtspSession(SessionOwner *pOwner, HANDLE hIOCP, uint32_t nObjID = RTSP_SESSION_ID);
+                RtspSession(HANDLE hIOCP, uint32_t nObjID = RTSP_SESSION_ID);
 
                 enum _SessionState
                 {
@@ -46,7 +45,6 @@ namespace Z3 {
                 int     OnSetupRespond(RtspMsg *pResponse, void *pData);
 
         private:
-                SessionOwner    *m_pOwner;
                 char            *m_pszUrl;
 
                 RTSP_METHOD     m_methodPrevious;

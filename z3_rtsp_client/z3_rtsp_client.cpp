@@ -18,34 +18,24 @@ RtspClient::~RtspClient()
         assert(m_lstSessions.empty());
 }
 
-//int RtspClient::AddSession(const char *pszHost, uint16_t nPort)
-//{
-//        RtspSession     *pSession;
-//        HANDLE          hIOCP;
-//
-//        assert(Running());
-//        hIOCP = GetIOCP();
-//        assert(hIOCP);
-//
-//        pSession = new RtspSession(this, hIOCP);
-//        pSession->AddRef();
-//
-//        if (!pSession->SetDestination(pszHost, nPort))
-//                return Z3_ENOMEM;
-//
-//        return pSession->Start();
-//}
-
-void RtspClient::OnNotify(uint32_t nSessionState, void *pData)
+void RtspClient::OnNotify(ev_id_t evID, uint32_t nErrorCode, void *pData)
 {
         RtspSession *pSession;
 
         pSession = static_cast<RtspSession *>(pData);
 
-        switch (nSessionState)
+        switch (evID)
         {
-        case RtspSession::STATE_CONNECT_TIMEOUT:
-                OnConnectTimeout(pSession);
+        case EV_CONNECT:
+                if (nErrorCode != 0)
+                {
+                        TRACE_WARN("Failed for operation \"CONNECT\", Error: 0x%08X - \"%s\"\r\n", nErrorCode);
+                        pSession->Stop();
+                        pSession->WaitForClosedEvent();
+                        Z3_OBJ_RELEASE(pSession);  // delete it now
+                        
+                        RemoveSession(pSession);
+                }
                 break;
         default:
                 break;
@@ -54,9 +44,9 @@ void RtspClient::OnNotify(uint32_t nSessionState, void *pData)
         return;
 }
 
-void RtspClient::OnConnectTimeout(RtspSession *pSession)
+void RtspClient::RemoveSession(RtspSession *pSession)
 {
-        TRACE_INFO("Session 0x%p timeout\r\n", pSession);
+        TRACE_INFO("Session 0x%p removed\r\n", pSession);
         
         m_lstSessions.remove(pSession);
         Z3_OBJ_RELEASE(pSession);
@@ -72,7 +62,7 @@ int RtspClient::AddSession(const char *pszUrl)
         hIOCP = GetIOCP();
         assert(hIOCP);
 
-        pSession = new RtspSession(this, hIOCP);
+        pSession = new RtspSession(hIOCP);
 
         nError = pSession->SetRequestUrl(pszUrl);
         m_lstSessions.push_back(pSession);

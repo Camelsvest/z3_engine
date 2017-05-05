@@ -285,28 +285,12 @@ int Connector::OnEvCompleted(ev_id_t evID, uint32_t nStatusCode, uint32_t nBytes
 
 int Connector::OnConnect(uint32_t nErrorCode)
 {
-        char    *pMsgString;
-        int     nLength;
-
-        TRACE_ENTER_FUNCTION;
-
         if (nErrorCode != ERROR_SUCCESS)
         {
-                nLength = retrieve_msg_string(nErrorCode, &pMsgString);
-                assert(nLength > 0);
-
-                TRACE_WARN("Failed for operation \"CONNECT\", Error: 0x%08X - %s\r\n", nErrorCode, pMsgString);
-                z3_free(pMsgString);
-
-                Notify(EV_CONNECT, nErrorCode);
-                //Close();
-
-                TRACE_EXIT_FUNCTION;
-
+                NotifyError(EV_CONNECT, nErrorCode);
                 return Z3_EINTR;
         }
 
-        TRACE_EXIT_FUNCTION;
         return 0;
 }
 
@@ -318,7 +302,8 @@ int Connector::OnEvRead(uint32_t nErrorCode, uint32_t nBytes)
 
         if (nErrorCode != ERROR_SUCCESS)
         {
-                TRACE_WARN("Failed for operation \"READ\", Error code: 0x%X\r\n", nErrorCode);
+                NotifyError(EV_READ, nErrorCode);
+
                 Close();
 
                 return Z3_EINTR;
@@ -360,7 +345,7 @@ int Connector::OnEvWrite(uint32_t nErrorCode, uint32_t nBytes)
 
         if (nErrorCode != ERROR_SUCCESS)
         {
-                TRACE_WARN("Failed for operation \"WRITE\", Error code: 0x%X\r\n", nErrorCode);
+                NotifyError(EV_WRITE, nErrorCode);
                 Close();
 
                 return Z3_EINTR;
@@ -387,4 +372,23 @@ int Connector::OnEvWrite(uint32_t nErrorCode, uint32_t nBytes)
         }
 
         return nError;
+}
+
+void Connector::NotifyError(ev_id_t evID, uint32_t nErrorCode)
+{
+        char    szBuf[36], *pMsgString;
+        int     nSize, nLength;
+
+        nSize = interpret_ev_id(evID, szBuf, sizeof(szBuf) / sizeof(char));
+        assert(nSize > 0);
+
+        nLength = retrieve_msg_string(nErrorCode, &pMsgString);
+        assert(nLength > 0);
+
+        TRACE_WARN("Failed for operation \"%s\", Error: 0x%08X - %s\r\n", szBuf, nErrorCode, pMsgString);
+        z3_free(pMsgString);
+
+        Notify(evID, nErrorCode);
+
+        return;
 }

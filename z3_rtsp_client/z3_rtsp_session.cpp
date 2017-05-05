@@ -12,9 +12,8 @@ using namespace Z3;
 #endif
 
 
-RtspSession::RtspSession(SessionOwner *pOwner, HANDLE hIOCP, uint32_t nObjID)
+RtspSession::RtspSession(HANDLE hIOCP, uint32_t nObjID)
         : Connector(hIOCP, nObjID)
-        , m_pOwner(pOwner)
         , m_pszUrl(NULL)
         , m_methodPrevious(RTSP_INVALID)
         , m_nCSeqPrevious(0)
@@ -25,7 +24,6 @@ RtspSession::RtspSession(SessionOwner *pOwner, HANDLE hIOCP, uint32_t nObjID)
         , m_pszSessionId(NULL)
         , m_nTimeout(DEFAULT_RTSP_SESSION_TIMEOUT)
 {
-        Z3_OBJ_ADDREF(m_pOwner);
 }
 
 RtspSession::~RtspSession()
@@ -33,22 +31,20 @@ RtspSession::~RtspSession()
         Z3_FREE_POINTER(m_pszSessionId);
         Z3_DELETE_OBJ(m_pRtspMedia);
         Z3_OBJ_RELEASE(m_pParser);
-        Z3_OBJ_RELEASE(m_pOwner);
         Z3_FREE_POINTER(m_pszUrl);
         Z3_FREE_POINTER(m_pszSessionIdPrevious);
 }
 
 int RtspSession::OnConnect(uint32_t nErrorCode)
 {
-        int nError = Z3_ERROR;
+        int nError = Z3_EOK;
 
         if (nErrorCode != 0)
         {
-                assert(m_pOwner);
-                m_pOwner->OnNotify(STATE_CONNECT_TIMEOUT, this);
-
-                return Z3_ERROR;
+                Notify(EV_NOTIFY, Z3_RTSP_SESSION_ECONNECT);
+                return Z3_EOK;
         }
+
 
         nError = SendOPTIONS();
         if (nError == Z3_EOK)

@@ -12,9 +12,10 @@ namespace Z3 {
         public:
                 RtspClient(uint32_t nObjID = RTSP_CLIENT_ID);
 
-                virtual int     AddSession(const char *pszUrl);
+                int     AddSession(const char *pszUrl);
+
                 /*virtual int     AddSession(const char *pszHost, uint16_t nPort);*/
-                virtual void    OnNotify(uint32_t nSessionState, void *pData);
+                virtual void    OnNotify(ev_id_t evID, uint32_t nErrorCode, void *pData);
 
         protected:
                 virtual ~RtspClient();
@@ -22,7 +23,7 @@ namespace Z3 {
                 virtual void    OnClientStart(void);
                 virtual void    OnClientStop(void);
 
-                void    OnConnectTimeout(RtspSession *pSession);
+                void    RemoveSession(RtspSession *pSession);
 
         private:
                 typedef std::list<RtspSession *> RTSP_SESSION_LIST;

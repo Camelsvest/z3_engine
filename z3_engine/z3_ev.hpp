@@ -12,7 +12,8 @@ typedef enum _ev_id
         EV_CONNECT,
         EV_ACCEPT,
         EV_OP_ADD,
-        EV_OP_REMOVE
+        EV_OP_REMOVE,
+        EV_NOTIFY
 } ev_id_t;
 
 typedef struct _Z3_EV_OVERLAPPED
@@ -60,6 +61,67 @@ typedef struct _Z3_EV_NOTIFY_ITEM
 #define CLEAN_ACT_OVL(z3ovl_pointer)            { memset(&z3ovl_pointer->act_ovl, 0, sizeof(Z3_EV_OVL)); }
 //#define CLEAN_TIMEOUT_OVL(z3ovl_pointer)        { memset(&z3ovl_pointer->timeout_ovl, 0, sizeof(Z3_EV_OVL)); }
 
+inline int interpret_ev_id(ev_id_t evID, char *pszBuf, unsigned int nLength)
+{
+        errno_t err;
 
+        if (pszBuf == NULL)
+                return 0;
+        
+        if (nLength <= 0)
+                return 0;
+        else if (nLength <= 32)
+        {
+                *pszBuf = '\0';
+                return 0;
+        }
+        else
+        {
+                switch (evID)
+                {
+                case EV_UNKNOWN:
+                        err = strcpy_s(pszBuf, nLength, "EV_UNKNOWN");
+                        break;
+                case EV_INSTANCE_START:
+                        err = strcpy_s(pszBuf, nLength, "EV_INSTANCE_START");
+                        break;
+                case EV_INSTANCE_STOP:
+                        err = strcpy_s(pszBuf, nLength, "EV_INSTANCE_STOP");
+                        break;
+                case EV_TIMEOUT:
+                        err = strcpy_s(pszBuf, nLength, "EV_TIMEOUT");
+                        break;
+                case EV_READ:
+                        err = strcpy_s(pszBuf, nLength, "EV_READ");
+                        break;
+                case EV_WRITE:
+                        err = strcpy_s(pszBuf, nLength, "EV_WRITE");
+                        break;
+                case EV_CONNECT:
+                        err = strcpy_s(pszBuf, nLength, "EV_CONNECT");
+                        break;
+                case EV_ACCEPT:
+                        err = strcpy_s(pszBuf, nLength, "EV_ACCEPT");
+                        break;
+                case EV_OP_ADD:
+                        err = strcpy_s(pszBuf, nLength, "EV_OP_ADD");
+                        break;
+                case EV_OP_REMOVE:
+                        err = strcpy_s(pszBuf, nLength, "EV_OP_REMOVE");
+                        break;
+                case EV_NOTIFY:
+                        err = strcpy_s(pszBuf, nLength, "EV_NOTIFY");
+                        break;
+                default:
+                        assert(false);
+                        break;
+                }
+
+                assert(err == 0);
+                return strlen(pszBuf);
+        }
+
+
+}
 
 #endif

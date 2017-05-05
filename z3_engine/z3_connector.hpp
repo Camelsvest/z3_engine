@@ -39,6 +39,8 @@ namespace Z3 {
                 int             StartRead(uint32_t nTimeout /*Millseconds*/);
 
         private:
+                void    NotifyError(ev_id_t evID, uint32_t nErrorCode);
+
                 char            *m_pRecvBuf;
                 uint32_t        m_nRecvBufSize;
 
